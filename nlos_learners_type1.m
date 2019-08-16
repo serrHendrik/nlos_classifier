@@ -26,19 +26,24 @@ dh = nlos_datahandler();
 %init datahandler with a predefined tour.
 %dh = dh.init_AMS_01();
 %dh = dh.init_AMS_02();
-dh = dh.init_ROT_01();
-%dh = dh.init_ROT_02();
+%dh = dh.init_ROT_01();
+dh = dh.init_ROT_02();
+
+%Select constellations
+GPS_flag = true;
+GAL_flag = false; 
+GLO_flag = false;
+dataset = dh.select_constellations(dh.data, GPS_flag, GAL_flag, GLO_flag);
+
+%Sampling
+%Not required for type1 learners
+dh.print_info_per_const(dataset);
 
 %%
 %Feature Engineering
 
-%Select constellations
-GPS_flag = true;
-GAL_flag = false;
-GLO_flag = false;
-
 %Standard features
-[predictors, response] = nlos_feature_extractor.extract_standard_features(dh.data, GPS_flag, GAL_flag, GLO_flag);
+[predictors, response] = nlos_feature_extractor.extract_standard_features(dataset);
 
 
 %%
@@ -62,13 +67,6 @@ learner = nlos_models.knn_euclidean_SIweight(predictors, response);
 %Model 2.6: K-Nearest Neighbours (Minkowski distance)
 %learner = nlos_models.knn_minkowski(predictors, response);
 
-
-
-
-%Model 2.X: Linear SVM
-%Note: needs to be adapted to work on big dataset
-%learner = nlos_models.svm_linear(predictors, response);
-
 %%
 %Performance
 
@@ -84,7 +82,8 @@ nlos_performance.hard_classification_report(response_mat,validationPredictions);
 
 dh2 = nlos_datahandler();
 dh2 = dh2.init_AMS_02();
-[predictors2, response2] = nlos_feature_extractor.extract_standard_features(dh2.data);
+dataset2 = dh2.select_constellations(dh2.data, GPS_flag, GAL_flag, GLO_flag);
+[predictors2, response2] = nlos_feature_extractor.extract_standard_features(dataset2);
 response2_mat = table2array(response2);
 
 for i = 1:length(learner.Trained)

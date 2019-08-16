@@ -38,6 +38,7 @@ classdef nlos_datahandler
             obj.dataset_name = 'AMS_01';
             obj.file_location = 'data/AMS_01/';
             obj.filename_FEdata = 'outputVars_EXP01_AMS_2018.mat';
+            obj.filename_PNT2data = 'PNT2data.mat';
             obj.filename_output = 'AMS_01_datatable.csv';
             
             obj = obj.init_datahandler();
@@ -47,6 +48,7 @@ classdef nlos_datahandler
             obj.dataset_name = 'AMS_02';
             obj.file_location = 'data/AMS_02/'; 
             obj.filename_FEdata = 'outputVars_EXP02_AMS_2018.mat';
+            obj.filename_PNT2data = 'PNT2data.mat';
             obj.filename_output = 'AMS_02_datatable.csv';
             
             obj = obj.init_datahandler();
@@ -66,6 +68,7 @@ classdef nlos_datahandler
             obj.dataset_name = 'ROT_02';
             obj.file_location = 'data/ROT_02/'; 
             obj.filename_FEdata = 'outputVars_EXP02_ROT_2018.mat';
+            obj.filename_PNT2data = 'PNT2data.mat';
             obj.filename_output = 'ROT_02_datatable.csv';
             
             obj = obj.init_datahandler();            
