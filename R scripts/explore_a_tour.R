@@ -1,0 +1,380 @@
+
+#libs
+library(MASS)
+library(rrcov)
+library(pls)
+library(robustbase)
+
+#workspace
+setwd("C:/Users/nsr/Documents/Hendrik/dev/nlos_classifier/R scripts")
+
+
+
+#data
+#data <- read.csv("../data/AMS_01/AMS_01_datatable.csv", header = TRUE)
+data <- read.csv("../data/ROT_01/ROT_01_datatable.csv", header = TRUE)
+
+data$los <- factor(data$los)
+data$trip_time <- data$common_time - data$common_time[1]
+str(data)
+
+
+
+#data per constellation
+dataGPS <- subset(data,data[,"sv_sys"] == "G")
+dataGAL <- subset(data,data[,"sv_sys"] == "E")
+dataGLO <- subset(data,data[,"sv_sys"] == "R")
+
+
+### DATA EXPLORATION AND OUTLIER DETECTION
+
+#NaN values?
+apply(apply(X,2,is.nan),2,sum)
+
+#NaN fractions
+#sum(is.nan(data$third_ord_diff)) / dim(data)[1]
+#sum(is.nan(data$innovations)) / dim(data)[1]
+#sum(is.nan(data$los)) / dim(data)[1]
+
+
+#Boxplots for all independent variables
+boxplot(X)
+#Conclusion: Large differences
+
+#Mean and standard deviation
+colMeans(X)
+apply(X,2,sd)
+#Conclusion: Large differences -> standardise variables
+#            Note mean difference between pseudorange and carrierphase due to NaN->0 for carrierphase
+colMeans(subset(X,X$carrierphase != 0))
+
+
+
+#Plots for base variables (compare constellations)
+#Pseudorange
+#boxplot(data$pseudorange, ylab = "Pseudorange [m]", main = "All constellations")
+#plot(sort(data$pseudorange), xlab = "sorted records", ylab = "Pseudorange [m]", main = "All constellations")
+plot(data$sv_sys, data$pseudorange, xlab = "Constellation", ylab = "Pseudorange [m]", main = "Pseudoranges per constellation")
+plot(sort(dataGAL$pseudorange), xlim = range(0:25000), ylim = range(1.9e7,2.85e7), xlab = "sorted records", ylab = "Pseudorange [m]", main = "GAL constellation")
+plot(sort(dataGPS$pseudorange), xlim = range(0:25000), ylim = range(1.9e7,2.85e7), xlab = "sorted records", ylab = "Pseudorange [m]", main = "GPS constellation")
+plot(sort(dataGLO$pseudorange), xlim = range(0:25000), ylim = range(1.9e7,2.85e7), xlab = "sorted records", ylab = "Pseudorange [m]", main = "GLO constellation")
+#Conclusions: Interesting gap after the lowest 4000 observations. Visible for all constellations.
+
+#Carrier phase
+cp <- data$carrierphase
+loss_of_lock_fraction <- sum(data$carrierphase == 0) / length(data$carrierphase)
+loss_of_lock_fractionGPS <- sum(dataGPS$carrierphase == 0) / length(dataGPS$carrierphase)
+loss_of_lock_fractionGAL <- sum(dataGAL$carrierphase == 0) / length(dataGAL$carrierphase)
+loss_of_lock_fractionGLO <- sum(dataGLO$carrierphase == 0) / length(dataGLO$carrierphase)
+
+loss_of_lock_fraction
+loss_of_lock_fractionGPS
+loss_of_lock_fractionGAL
+loss_of_lock_fractionGLO
+
+data_cp <- subset(data,data$carrierphase != 0)
+data_cp$diff_PR_CP <- data_cp$pseudorange - data_cp$carrierphase
+data_cp$diff_PR_CP2 <- sqrt((data_cp$pseudorange - data_cp$carrierphase)^2)
+data_cpGPS <- subset(data_cp,data_cp[,"sv_sys"] == "G")
+data_cpGAL <- subset(data_cp,data_cp[,"sv_sys"] == "E")
+data_cpGLO <- subset(data_cp,data_cp[,"sv_sys"] == "R")
+plot(data_cp$sv_sys, data_cp$carrierphase, xlab = "Constellation", ylab = "Carrier phase [m]", main = "Carrier phase per constellation")
+plot(sort(data_cpGAL$carrierphase), xlim = range(0:25000), ylim = range(1.9e7,2.85e7), xlab = "sorted records", ylab = "Carrier phase [m]", main = "GAL constellation")
+plot(sort(data_cpGPS$carrierphase), xlim = range(0:25000), ylim = range(1.9e7,2.85e7), xlab = "sorted records", ylab = "Carrier phase [m]", main = "GPS constellation")
+plot(sort(data_cpGLO$carrierphase), xlim = range(0:25000), ylim = range(1.9e7,2.85e7), xlab = "sorted records", ylab = "Carrier phase [m]", main = "GLO constellation")
+#Conclusion: Not sure if extra info in these plots compared to pseudorange
+
+#CNR
+plot(data$sv_sys, data$cnr, xlab = "Constellation", ylab = "CN_0", main = "CN_0 boxplots")
+
+#Doppler
+plot(data$sv_sys, data$doppler, xlab = "Constellation", ylab = "Doppler [Hz]", main = "Doppler boxplots")
+
+#Azimuth
+plot(data$sv_sys, data$az, xlab = "Constellation", ylab = "Azimuth [degrees]", main = "Azimuth boxplots")
+
+#Elevation
+plot(data$sv_sys, data$el, xlab = "Constellation", ylab = "Elevation [degrees]", main = "Elevation boxplots")
+plot(data$sv_sys, data$el_cm, xlab = "Constellation", ylab = "Elevation CM [degrees]", main = "Elevation CM boxplots")
+
+#Third order difference
+plot(data$sv_sys, data$third_ord_diff, xlab = "Constellation", ylab = "Third order difference", main = "Third order difference boxplots")
+h1 <- hist(dataGAL$third_ord_diff, breaks = 200)
+h1$counts <- h1$counts / sum(h1$counts)
+plot(h1, xlim = range(-10,10), ylim = range(0,0.5), xlab = "Third order difference", ylab = "Probability", main = "Distribution of third order difference [GAL]")
+h2 <- hist(dataGPS$third_ord_diff, breaks = 200)
+h2$counts <- h2$counts / sum(h2$counts)
+plot(h2, xlim = range(-10,10), ylim = range(0,0.5), xlab = "Third order difference", ylab = "Probability", main = "Distribution of third order difference [GPS]")
+h3 <- hist(dataGLO$third_ord_diff, breaks = 200)
+h3$counts <- h3$counts / sum(h3$counts)
+plot(h3, xlim = range(-10,10), ylim = range(0,0.5), xlab = "Third order difference", ylab = "Probability", main = "Distribution of third order difference [GLO]")
+
+#Innovations
+data_inno <- subset(data,data$innovations > -60 & data$innovations < 60)
+data_innoGPS <- subset(data_inno,data_inno[,"sv_sys"] == "G")
+data_innoGAL <- subset(data_inno,data_inno[,"sv_sys"] == "E")
+data_innoGLO <- subset(data_inno,data_inno[,"sv_sys"] == "R")
+
+plot(data_inno$sv_sys, data_inno$innovations, xlab = "Constellation", ylab = "Innovation", main = "Innovation boxplots")
+h1 <- hist(data_innoGAL$innovations, breaks = 100)
+h1$counts <- h1$counts / sum(h1$counts)
+plot(h1, xlim = range(-40,40), ylim = range(0,0.5), xlab = "Innovation", ylab = "Probability", main = "Distribution of Innovation [GAL]")
+h2 <- hist(data_innoGPS$innovations, breaks = 100)
+h2$counts <- h2$counts / sum(h2$counts)
+plot(h2, xlim = range(-40,40), ylim = range(0,0.5), xlab = "Innovation", ylab = "Probability", main = "Distribution of Innovation [GPS]")
+h3 <- hist(data_innoGLO$innovations, breaks = 100)
+h3$counts <- h3$counts / sum(h3$counts)
+plot(h3, xlim = range(-40,40), ylim = range(0,0.5), xlab = "Innovation", ylab = "Probability", main = "Distribution of Innovation [GLO]")
+
+plot(dataGAL$trip_time, dataGAL$innovations, ylim = c(-100,350), xlab = "Trip time [s]", ylab = "Innovation", main = "Innovation over time [GAL]")
+plot(dataGPS$trip_time, dataGPS$innovations, ylim = c(-100,350), xlab = "Trip time [s]", ylab = "Innovation", main = "Innovation over time [GPS]")
+plot(dataGLO$trip_time, dataGLO$innovations, ylim = c(-100,350), xlab = "Trip time [s]", ylab = "Innovation", main = "Innovation over time [GLO]")
+
+
+#Beyond base variables
+#Differences Pseudorange and Carrier phase
+diff_PR_CP_mean_GAL <- mean(data_cpGAL$diff_PR_CP)
+diff_PR_CP_mean_GPS <- mean(data_cpGPS$diff_PR_CP)
+diff_PR_CP_mean_GLO <- mean(data_cpGLO$diff_PR_CP)
+
+diff_PR_CP_mean_GAL
+diff_PR_CP_mean_GPS
+diff_PR_CP_mean_GLO
+
+diff_PR_CP_sd_GAL <- sd(data_cpGAL$diff_PR_CP)
+diff_PR_CP_sd_GPS <- sd(data_cpGPS$diff_PR_CP)
+diff_PR_CP_sd_GLO <- sd(data_cpGLO$diff_PR_CP)
+
+diff_PR_CP_sd_GAL
+diff_PR_CP_sd_GPS
+diff_PR_CP_sd_GLO
+
+plot(data_cp$sv_sys, data_cp$diff_PR_CP, xlab = "Constellation", ylab = "Pseudorange - Carrier phase [m]", main = "Diff. between PR and CP per constellation")
+#data_cpGPSGAL <- rbind(data_cpGPS, data_cpGAL)
+#plot(data_cpGPSGAL$sv_sys, data_cpGPSGAL$diff_PR_CP, xlab = "Constellation", ylab = "Pseudorange - Carrier phase [m]", main = "Diff. between PR and CP per constellation")
+
+plot(data_cpGAL$trip_time, data_cpGAL$diff_PR_CP, xlab = "trip time [s]", ylab = "Pseudorange - Carrier phase [m]", main = "Diff. between PR and CP over time [GAL]")
+plot(data_cpGPS$trip_time, data_cpGPS$diff_PR_CP, xlab = "trip time [s]", ylab = "Pseudorange - Carrier phase [m]", main = "Diff. between PR and CP over time [GPS]")
+plot(data_cpGLO$trip_time, data_cpGLO$diff_PR_CP, xlab = "trip time [s]", ylab = "Pseudorange - Carrier phase [m]", main = "Diff. between PR and CP over time [GLO]")
+
+plot(data_cpGAL$trip_time, data_cpGAL$diff_PR_CP2, xlab = "trip time [s]", ylab = "sqrt((Pseudorange - Carrier phase)^2) [m]", main = "Diff. between PR and CP over time [GAL]")
+plot(data_cpGPS$trip_time, data_cpGPS$diff_PR_CP2, xlab = "trip time [s]", ylab = "sqrt((Pseudorange - Carrier phase)^2) [m]", main = "Diff. between PR and CP over time [GPS]")
+plot(data_cpGLO$trip_time, data_cpGLO$diff_PR_CP2, xlab = "trip time [s]", ylab = "sqrt((Pseudorange - Carrier phase)^2) [m]", main = "Diff. between PR and CP over time [GLO]")
+
+#Conclusion: Problem with Glonass Carrier Phase? Might be problematic.
+
+
+
+#Relation to LOS/NLOS labelling
+
+colLOS = "chartreuse3"
+colNLOS = "red"
+#leg = legend("topright", legend=c("LOS", "NLOS"), col=c(colLOS, colNLOS), pch = 1)
+
+#GAL
+plot(dataGAL$los, dataGAL$pseudorange, xlab = "LOS", ylab = "Pseudorange [m]", main = "LOS vs Pseudorange [GAL]")
+plot(data_cpGAL$los, data_cpGAL$carrierphase, xlab = "LOS", ylab = "Carrier Phase [m]", main = "LOS vs Carrier phase [GAL]")
+pr_LOS_CP <- sum(data_cpGAL$los == 1) / length(data_cpGAL$los)
+pr_LOS_CP
+data_cp0GAL <- subset(dataGAL,dataGAL$carrierphase == 0)
+pr_LOS_noCP <- sum(data_cp0GAL$los == 1) / length(data_cp0GAL$los)
+pr_LOS_noCP
+OR_GAL <- pr_LOS_CP / pr_LOS_noCP
+OR_GAL
+
+plot(dataGAL$los, dataGAL$cnr, xlab = "LOS", ylab = "CN_0", main = "LOS vs CN_0 [GAL]")
+plot(dataGAL$los, dataGAL$doppler, xlab = "LOS", ylab = "Doppler [Hz]", main = "LOS vs Doppler [GAL]")
+plot(dataGAL$los, dataGAL$az, xlab = "LOS", ylab = "Azimuth [degrees]", main = "LOS vs Azimuth [GAL]")
+plot(dataGAL$los, dataGAL$el, xlab = "LOS", ylab = "Elevation [degrees]", main = "LOS vs Elevation [GAL]")
+plot(dataGAL$los, dataGAL$third_ord_diff, xlab = "LOS", ylab = "Third order difference", main = "LOS vs Third order difference [GAL]")
+plot(dataGAL$los, dataGAL$innovations, xlab = "LOS", ylab = "Innovation", main = "LOS vs Innovation [GAL]")
+#Maybe we can throw away LOS outliers? High innovation suggests these should NLOS.
+
+col_defGAL = ifelse(dataGAL$los == 1,colLOS, colNLOS)
+plot(dataGAL$az, dataGAL$el, col = col_defGAL, xlab = "Azimuth[degrees]" , ylab = "Elevation [degrees]", main = "LOS vs Azimuth/Elevation [GAL]")
+legend("topright", legend=c("LOS", "NLOS"), col=c(colLOS, colNLOS), pch = 1)
+plot(dataGAL$trip_time, dataGAL$third_ord_diff, ylim = c(-20,20), col = col_defGAL, xlab = "Trip time [s]", ylab = "Third order difference", main = "Third order difference over time [GAL]")
+legend("topright", legend=c("LOS", "NLOS"), col=c(colLOS, colNLOS), pch = 1)
+plot(dataGAL$trip_time, dataGAL$innovations, ylim = c(-100,350), col = col_defGAL, xlab = "Trip time [s]", ylab = "Innovation", main = "Innovation over time [GAL]")
+legend("topright", legend=c("LOS", "NLOS"), col=c(colLOS, colNLOS), pch = 1)
+plot(data_cpGAL$trip_time, data_cpGAL$diff_PR_CP, col = col_defGAL, xlab = "trip time [s]", ylab = "Pseudorange - Carrier phase [m]", main = "Diff. between PR and CP over time [GAL]")
+legend("topleft", legend=c("LOS", "NLOS"), col=c(colLOS, colNLOS), pch = 1)
+
+
+#GPS
+plot(dataGPS$los, dataGPS$pseudorange, xlab = "LOS", ylab = "Pseudorange [m]", main = "LOS vs Pseudorange [GPS]")
+plot(data_cpGPS$los, data_cpGPS$carrierphase, xlab = "LOS", ylab = "Carrier Phase [m]", main = "LOS vs Carrier phase [GPS]")
+pr_LOS_CP <- sum(data_cpGPS$los == 1) / length(data_cpGPS$los)
+pr_LOS_CP
+data_cp0GPS <- subset(dataGPS,dataGPS$carrierphase == 0)
+pr_LOS_noCP <- sum(data_cp0GPS$los == 1) / length(data_cp0GPS$los)
+pr_LOS_noCP
+OR_GPS <- pr_LOS_CP / pr_LOS_noCP
+OR_GPS
+
+plot(dataGPS$los, dataGPS$cnr, xlab = "LOS", ylab = "CN_0", main = "LOS vs CN_0 [GPS]")
+plot(dataGPS$los, dataGPS$doppler, xlab = "LOS", ylab = "Doppler [Hz]", main = "LOS vs Doppler [GPS]")
+plot(dataGPS$los, dataGPS$az, xlab = "LOS", ylab = "Azimuth [degrees]", main = "LOS vs Azimuth [GPS]")
+plot(dataGPS$los, dataGPS$el, xlab = "LOS", ylab = "Elevation [degrees]", main = "LOS vs Elevation [GPS]")
+plot(dataGPS$los, dataGPS$third_ord_diff, xlab = "LOS", ylab = "Third order difference", main = "LOS vs Third order difference [GPS]")
+plot(dataGPS$los, dataGPS$innovations, xlab = "LOS", ylab = "Innovation", main = "LOS vs Innovation [GPS]")
+
+col_defGPS = ifelse(dataGPS$los == 1, colLOS, colNLOS)
+plot(dataGPS$az, dataGPS$el, col = col_defGPS, xlab = "Azimuth[degrees]" , ylab = "Elevation [degrees]", main = "LOS vs Azimuth/Elevation [GPS]")
+legend("bottomright", legend=c("LOS", "NLOS"), col=c(colLOS, colNLOS), pch = 1)
+plot(dataGPS$trip_time, dataGPS$third_ord_diff, ylim = c(-20,20), col = col_defGPS, xlab = "Trip time [s]", ylab = "Third order difference", main = "Third order difference over time [GPS]")
+legend("topleft", legend=c("LOS", "NLOS"), col=c(colLOS, colNLOS), pch = 1)
+plot(dataGPS$trip_time, dataGPS$innovations, ylim = c(-100,350), col = col_defGPS, xlab = "Trip time [s]", ylab = "Innovation", main = "Innovation over time [GPS]")
+legend("topright", legend=c("LOS", "NLOS"), col=c(colLOS, colNLOS), pch = 1)
+plot(data_cpGPS$trip_time, data_cpGPS$diff_PR_CP, col = col_defGPS, xlab = "trip time [s]", ylab = "Pseudorange - Carrier phase [m]", main = "Diff. between PR and CP over time [GPS]")
+legend("bottomleft", legend=c("LOS", "NLOS"), col=c(colLOS, colNLOS), pch = 1)
+
+#GLO
+plot(dataGLO$los, dataGLO$pseudorange, xlab = "LOS", ylab = "Pseudorange [m]", main = "LOS vs Pseudorange [GLO]")
+plot(data_cpGLO$los, data_cpGLO$carrierphase, xlab = "LOS", ylab = "Carrier Phase [m]", main = "LOS vs Carrier phase [GLO]")
+pr_LOS_CP <- sum(data_cpGLO$los == 1) / length(data_cpGLO$los)
+pr_LOS_CP
+data_cp0GLO <- subset(dataGLO,dataGLO$carrierphase == 0)
+pr_LOS_noCP <- sum(data_cp0GLO$los == 1) / length(data_cp0GLO$los)
+pr_LOS_noCP
+OR_GLO <- pr_LOS_CP / pr_LOS_noCP
+OR_GLO
+
+
+plot(dataGLO$los, dataGLO$cnr, xlab = "LOS", ylab = "CN_0", main = "LOS vs CN_0 [GLO]")
+plot(dataGLO$los, dataGLO$doppler, xlab = "LOS", ylab = "Doppler [Hz]", main = "LOS vs Doppler [GLO]")
+plot(dataGLO$los, dataGLO$az, xlab = "LOS", ylab = "Azimuth [degrees]", main = "LOS vs Azimuth [GLO]")
+plot(dataGLO$los, dataGLO$el, xlab = "LOS", ylab = "Elevation [degrees]", main = "LOS vs Elevation [GLO]")
+plot(dataGLO$los, dataGLO$third_ord_diff, xlab = "LOS", ylab = "Third order difference", main = "LOS vs Third order difference [GLO]")
+plot(dataGLO$los, dataGLO$innovations, xlab = "LOS", ylab = "Innovation", main = "LOS vs Innovation [GLO]")
+
+col_defGLO = ifelse(dataGLO$los == 1, colLOS, colNLOS)
+plot(dataGLO$az, dataGLO$el, col = col_defGLO, xlab = "Azimuth[degrees]" , ylab = "Elevation [degrees]", main = "LOS vs Azimuth/Elevation [GLO]")
+legend("top", legend=c("LOS", "NLOS"), col=c(colLOS, colNLOS), pch = 1)
+plot(dataGLO$trip_time, dataGLO$third_ord_diff, ylim = c(-20,20), col = col_defGLO, xlab = "Trip time [s]", ylab = "Third order difference", main = "Third order difference over time [GLO]")
+legend("topleft", legend=c("LOS", "NLOS"), col=c(colLOS, colNLOS), pch = 1)
+plot(dataGLO$trip_time, dataGLO$innovations, ylim = c(-100,350), col = col_defGLO, xlab = "Trip time [s]", ylab = "Innovation", main = "Innovation over time [GLO]")
+legend("topright", legend=c("LOS", "NLOS"), col=c(colLOS, colNLOS), pch = 1)
+plot(data_cpGLO$trip_time, data_cpGLO$diff_PR_CP, col = col_defGLO, xlab = "trip time [s]", ylab = "Pseudorange - Carrier phase [m]", main = "Diff. between PR and CP over time [GLO]")
+legend("right", legend=c("LOS", "NLOS"), col=c(colLOS, colNLOS), pch = 1)
+
+#General
+data_0CP <- subset(data,data$carrierphase == 0)
+data_CP <- subset(data,data$carrierphase != 0)
+pr_LOS_CP <- sum(data_CP$los == 1) / length(data_CP$los)
+pr_LOS_0CP <- sum(data_0CP$los == 1) / length(data_0CP$los)
+pr_LOS_CP
+pr_LOS_0CP
+pr_LOS_CP / pr_LOS_0CP
+
+
+
+
+### Multicolinearity ###
+#Consider only data when CP available
+data2 <- subset(data,data$carrierphase != 0)
+
+#Independent variables
+X <- data2[,4:13]
+
+corM <- cor(Z)
+corM
+#Large correlation between el and el_cm (expected), and between PR and CP
+
+VIF <- diag(solve(cor(X)))
+VIF
+
+#Remove carrierphase, az, az_cm, el_cm
+XX <- X[, -c(2,5,6,8)]
+ZZ <- scale(XX, center = colMeans(XX), scale = apply(XX,2,sd))
+diag(solve(cor(XX)))
+
+
+### PCA ###
+
+Zpca <- PcaClassic(ZZ)
+screeplot(Zpca, type = "lines")
+plot(Zpca$eigenvalues, ylim = c(0,3), type = "b", xlab = "Index eigenvalues", ylab = "Eigenvalues")
+summary(Zpca) #4/5 out of 6 components seems enough
+
+#Impact of X variables on first PC
+Zpca$loadings[,1] * sqrt(Zpca$eigenvalues[1])
+Zpca$loadings[,2] * sqrt(Zpca$eigenvalues[2])
+Zpca$loadings[,3] * sqrt(Zpca$eigenvalues[3])
+Zpca$loadings[,4] * sqrt(Zpca$eigenvalues[4])
+
+
+
+
+
+
+
+#########################################################################################################
+
+#downsampled dataset
+data2 <- subset(data, common_time %% 4 == 0)
+data2_new <- subset(data, common_time %% 4 == 1)
+
+
+
+### Basic logistic regression
+lm1 <- glm(los ~ . , data = data2[,-c(1,2,3)])
+summary(lm1)
+lm2 <- stepAIC(lm1, list(lower = ~ 1, upper = ~ .), direction = "both")
+summary(lm2) #unchanged
+#plot(lm2)
+lm2.fitted.link <- predict(lm2, newdata = data2, type = "link")
+lm2.fitted.probs <- predict(lm2, newdata = data2, type = "response")
+plot(lm2.fitted.link, data2$los, xlab = "fitted", ylab = "LOS",
+     main = "logistic regression fit to AMS_01 data")
+points(lm2.fitted.link, lm2.fitted.probs, type = "p", col = "blue")
+
+#Establish a base line
+nb_NLOS_samples = dim(data2[data2$los == 0,])[1]
+nb_LOS_samples = dim(data2[data2$los == 1,])[1]
+cut_off = nb_NLOS_samples / (nb_LOS_samples + nb_NLOS_samples)
+
+pred.los <- ifelse(lm2.fitted.probs > cut_off, 1, 0)
+table(data2$los, pred.los)
+ptable <- prop.table(table(data2$los, pred.los))
+# prop.table normalizes to a total of 1
+ptable
+APER <- 1 - sum(diag(ptable))
+APER
+
+
+
+
+### PCA
+X <- data2[,-c(1,2,3,11)]
+apply(X,2,sd)
+#Strongly different scales -> standardise
+#cov(X)
+cor(X)
+
+Xpca <- PcaClassic(X,scale = TRUE)
+screeplot(Xpca, type = "lines")
+plot(Xpca$eigenvalues, type = "b", xlab = "Index eigenvalues", ylab = "Eigenvalues")
+summary(Xpca) #5 out of 7 components seems enough
+
+#Impact of X variables on first PC
+Xpca$loadings[,1] * sqrt(Xpca$eigenvalues[1])
+
+
+### PCR (PCA + LS)
+diag(solve(cor(X)))       # VIF values
+Xpcr <- pcr(los ~ ., data = data2[, -c(1,2,3)], scale = TRUE, ncomp = 5)
+coef(Xpcr, intercept = TRUE)
+
+Xpcr_loo <- pcr(los ~ ., data = data2[, -c(1,2,3)], scale = TRUE, validation = "CV", segments = 10, segment.type = "consecutive")
+summary(Xpcr_loo)
+coef(Xpcr_loo)
+
+plot(RMSEP(Xpcr_loo, estimate = "train"), main = "training RMSEP")
+plot(RMSEP(Xpcr_loo, estimate = "CV"), main = "CV MSEP")
+plot(RMSEP(Xpcr_loo, newdata = data2_new, estimate = "test"), main = "validation RMSEP")
+
+plot(RMSEP(Xpcr_loo, estimate = "all", newdata = data2_new))
+
+#Not really meaningful... need a classification output
+

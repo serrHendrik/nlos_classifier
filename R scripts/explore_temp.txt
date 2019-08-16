@@ -1,0 +1,228 @@
+
+#libs
+library(MASS)
+library(rrcov)
+library(pls)
+library(robustbase)
+
+#workspace
+setwd("C:/Users/nsr/Documents/Hendrik/dev/nlos_classifier/R scripts")
+
+
+
+#data
+#data <- read.csv("../data/AMS_01/AMS_01_datatable.csv", header = TRUE)
+data <- read.csv("../data/ROT_01/ROT_01_datatable.csv", header = TRUE)
+
+#Independent variables
+X <- data[,4:13]
+
+#data per constellation
+dataGPS <- subset(data,data[,"sv_sys"] == "G")
+dataGAL <- subset(data,data[,"sv_sys"] == "E")
+dataGLO <- subset(data,data[,"sv_sys"] == "R")
+
+
+### DATA EXPLORATION AND OUTLIER DETECTION
+
+#NaN values?
+apply(apply(X,2,is.nan),2,sum)
+
+#NaN fractions
+#sum(is.nan(data$third_ord_diff)) / dim(data)[1]
+#sum(is.nan(data$innovations)) / dim(data)[1]
+#sum(is.nan(data$los)) / dim(data)[1]
+
+
+#Boxplots for all independent variables
+boxplot(X)
+#Conclusion: Large differences
+
+#Mean and standard deviation
+colMeans(X)
+apply(X,2,sd)
+#Conclusion: Large differences -> standardise variables
+#            Note mean difference between pseudorange and carrierphase due to NaN->0 for carrierphase
+
+
+#Plots for base individual vars
+#Pseudorange
+#boxplot(data$pseudorange, ylab = "Pseudorange [m]", main = "All constellations")
+#plot(sort(data$pseudorange), xlab = "sorted records", ylab = "Pseudorange [m]", main = "All constellations")
+plot(data$sv_sys, data$pseudorange, xlab = "Constellation", ylab = "Pseudorange [m]", main = "Pseudoranges per constellation")
+plot(sort(dataGAL$pseudorange), xlim = range(0:25000), ylim = range(1.9e7,2.85e7), xlab = "sorted records", ylab = "Pseudorange [m]", main = "GAL constellation")
+plot(sort(dataGPS$pseudorange), xlim = range(0:25000), ylim = range(1.9e7,2.85e7), xlab = "sorted records", ylab = "Pseudorange [m]", main = "GPS constellation")
+plot(sort(dataGLO$pseudorange), xlim = range(0:25000), ylim = range(1.9e7,2.85e7), xlab = "sorted records", ylab = "Pseudorange [m]", main = "GLO constellation")
+#Conclusions: Interesting gap after the lowest 4000 observations. Visible for all constellations.
+
+#Carrier phase
+cp <- data$carrierphase
+loss_of_lock_fraction <- sum(data$carrierphase == 0) / length(data$carrierphase)
+loss_of_lock_fractionGPS <- sum(dataGPS$carrierphase == 0) / length(dataGPS$carrierphase)
+loss_of_lock_fractionGAL <- sum(dataGAL$carrierphase == 0) / length(dataGAL$carrierphase)
+loss_of_lock_fractionGLO <- sum(dataGLO$carrierphase == 0) / length(dataGLO$carrierphase)
+
+loss_of_lock_fraction
+loss_of_lock_fractionGPS
+loss_of_lock_fractionGAL
+loss_of_lock_fractionGLO
+
+data_cp <- subset(data,data$carrierphase != 0)
+data_cp$trip_time <- data_cp$common_time - data_cp$common_time[1]
+data_cp$diff_PR_CP <- data_cp$pseudorange - data_cp$carrierphase
+data_cp$diff_PR_CP2 <- sqrt((data_cp$pseudorange - data_cp$carrierphase)^2)
+data_cpGPS <- subset(data_cp,data_cp[,"sv_sys"] == "G")
+data_cpGAL <- subset(data_cp,data_cp[,"sv_sys"] == "E")
+data_cpGLO <- subset(data_cp,data_cp[,"sv_sys"] == "R")
+plot(data_cp$sv_sys, data_cp$carrierphase, xlab = "Constellation", ylab = "Carrier phase [m]", main = "Carrier phase per constellation")
+plot(sort(data_cpGAL$carrierphase), xlim = range(0:25000), ylim = range(1.9e7,2.85e7), xlab = "sorted records", ylab = "Carrier phase [m]", main = "GAL constellation")
+plot(sort(data_cpGPS$carrierphase), xlim = range(0:25000), ylim = range(1.9e7,2.85e7), xlab = "sorted records", ylab = "Carrier phase [m]", main = "GPS constellation")
+plot(sort(data_cpGLO$carrierphase), xlim = range(0:25000), ylim = range(1.9e7,2.85e7), xlab = "sorted records", ylab = "Carrier phase [m]", main = "GLO constellation")
+#Conclusion: Not sure if extra info here
+
+
+#CNR
+plot(data$sv_sys, data$cnr, xlab = "Constellation", ylab = "CN_0", main = "CN_0 boxplots")
+
+#Doppler
+plot(data$sv_sys, data$doppler, xlab = "Constellation", ylab = "Doppler [Hz]", main = "Doppler boxplots")
+
+#Azimuth
+plot(data$sv_sys, data$az, xlab = "Constellation", ylab = "Azimuth [degrees]", main = "Azimuth boxplots")
+
+#Elevation
+plot(data$sv_sys, data$el, xlab = "Constellation", ylab = "Elevation [degrees]", main = "Elevation boxplots")
+plot(data$sv_sys, data$el_cm, xlab = "Constellation", ylab = "Elevation CM [degrees]", main = "Elevation CM boxplots")
+
+#Third order difference
+plot(data$sv_sys, data$third_ord_diff, xlab = "Constellation", ylab = "Third order difference", main = "Third order difference boxplots")
+hist(dataGAL$third_ord_diff, breaks = 200, freq = FALSE)
+hist(dataGPS$third_ord_diff, breaks = 200, freq = FALSE)
+hist(dataGLO$third_ord_diff, breaks = 200, freq = FALSE)
+
+
+
+#Beyond the base variables
+#Differences Pseudorange and Carrier phase
+diff_PR_CP_mean_GAL <- mean(data_cpGAL$diff_PR_CP)
+diff_PR_CP_mean_GPS <- mean(data_cpGPS$diff_PR_CP)
+diff_PR_CP_mean_GLO <- mean(data_cpGLO$diff_PR_CP)
+
+diff_PR_CP_mean_GAL
+diff_PR_CP_mean_GPS
+diff_PR_CP_mean_GLO
+
+diff_PR_CP_sd_GAL <- sd(data_cpGAL$diff_PR_CP)
+diff_PR_CP_sd_GPS <- sd(data_cpGPS$diff_PR_CP)
+diff_PR_CP_sd_GLO <- sd(data_cpGLO$diff_PR_CP)
+
+diff_PR_CP_sd_GAL
+diff_PR_CP_sd_GPS
+diff_PR_CP_sd_GLO
+
+plot(data_cp$sv_sys, data_cp$diff_PR_CP, xlab = "Constellation", ylab = "Pseudorange - Carrier phase [m]", main = "Diff. between PR and CP per constellation")
+#data_cpGPSGAL <- rbind(data_cpGPS, data_cpGAL)
+#plot(data_cpGPSGAL$sv_sys, data_cpGPSGAL$diff_PR_CP, xlab = "Constellation", ylab = "Pseudorange - Carrier phase [m]", main = "Diff. between PR and CP per constellation")
+
+plot(data_cpGAL$trip_time, data_cpGAL$diff_PR_CP, xlab = "trip time [s]", ylab = "Pseudorange - Carrier phase [m]", main = "Diff. between PR and CP over time [GAL]")
+plot(data_cpGPS$trip_time, data_cpGPS$diff_PR_CP, xlab = "trip time [s]", ylab = "Pseudorange - Carrier phase [m]", main = "Diff. between PR and CP over time [GPS]")
+plot(data_cpGLO$trip_time, data_cpGLO$diff_PR_CP, xlab = "trip time [s]", ylab = "Pseudorange - Carrier phase [m]", main = "Diff. between PR and CP over time [GLO]")
+
+plot(data_cpGAL$trip_time, data_cpGAL$diff_PR_CP2, xlab = "trip time [s]", ylab = "sqrt((Pseudorange - Carrier phase)^2) [m]", main = "Diff. between PR and CP over time [GAL]")
+plot(data_cpGPS$trip_time, data_cpGPS$diff_PR_CP2, xlab = "trip time [s]", ylab = "sqrt((Pseudorange - Carrier phase)^2) [m]", main = "Diff. between PR and CP over time [GPS]")
+plot(data_cpGLO$trip_time, data_cpGLO$diff_PR_CP2, xlab = "trip time [s]", ylab = "sqrt((Pseudorange - Carrier phase)^2) [m]", main = "Diff. between PR and CP over time [GLO]")
+
+#Conclusion: Problem with Glonass? We might want to throw out Glonass all together.
+
+
+
+
+
+#downsampled dataset
+data2 <- subset(data, common_time %% 4 == 0)
+data2_new <- subset(data, common_time %% 4 == 1)
+
+#plot for individual satellite G1
+#G1 <- subset(data, sv_sys == "G" & sv_id == 1)
+#pairs(G1[,-c(2,3)])
+
+
+
+#Boxplots LOS/NLOS (no clear outliers)
+data2_fact <- data2
+data2_fact$los <- factor(data2_fact$los)
+plot(data2_fact$los, data2_fact$pseudorange, xlab = "LOS", ylab = "Pseudorange [m]", main = "AMS_01 dataset")
+plot(data2_fact$los, data2_fact$cnr, xlab = "LOS", ylab = "CN_0", main = "AMS_01 dataset")
+plot(data2_fact$los, data2_fact$doppler, xlab = "LOS", ylab = "Doppler [Herz]", main = "AMS_01 dataset")
+plot(data2_fact$los, data2_fact$az, xlab = "LOS", ylab = "Azimuth [degrees]", main = "AMS_01 dataset")
+plot(data2_fact$los, data2_fact$az_cm, xlab = "LOS", ylab = "Azimuth Cm [degrees]", main = "AMS_01 dataset")
+plot(data2_fact$los, data2_fact$el, xlab = "LOS", ylab = "Elevation [degrees]", main = "AMS_01 dataset")
+plot(data2_fact$los, data2_fact$el_cm, xlab = "LOS", ylab = "Elevation Cm [degrees]", main = "AMS_01 dataset")
+
+
+
+data_los <- subset(data2, los == 1)
+data_nlos <- subset(data2, los == 0)
+
+
+### Basic logistic regression
+lm1 <- glm(los ~ . , data = data2[,-c(1,2,3)])
+summary(lm1)
+lm2 <- stepAIC(lm1, list(lower = ~ 1, upper = ~ .), direction = "both")
+summary(lm2) #unchanged
+#plot(lm2)
+lm2.fitted.link <- predict(lm2, newdata = data2, type = "link")
+lm2.fitted.probs <- predict(lm2, newdata = data2, type = "response")
+plot(lm2.fitted.link, data2$los, xlab = "fitted", ylab = "LOS",
+     main = "logistic regression fit to AMS_01 data")
+points(lm2.fitted.link, lm2.fitted.probs, type = "p", col = "blue")
+
+#Establish a base line
+nb_NLOS_samples = dim(data2[data2$los == 0,])[1]
+nb_LOS_samples = dim(data2[data2$los == 1,])[1]
+cut_off = nb_NLOS_samples / (nb_LOS_samples + nb_NLOS_samples)
+
+pred.los <- ifelse(lm2.fitted.probs > cut_off, 1, 0)
+table(data2$los, pred.los)
+ptable <- prop.table(table(data2$los, pred.los))
+# prop.table normalizes to a total of 1
+ptable
+APER <- 1 - sum(diag(ptable))
+APER
+
+
+
+
+### PCA
+X <- data2[,-c(1,2,3,11)]
+apply(X,2,sd)
+#Strongly different scales -> standardise
+#cov(X)
+cor(X)
+
+Xpca <- PcaClassic(X,scale = TRUE)
+screeplot(Xpca, type = "lines")
+plot(Xpca$eigenvalues, type = "b", xlab = "Index eigenvalues", ylab = "Eigenvalues")
+summary(Xpca) #5 out of 7 components seems enough
+
+#Impact of X variables on first PC
+Xpca$loadings[,1] * sqrt(Xpca$eigenvalues[1])
+
+
+### PCR (PCA + LS)
+diag(solve(cor(X)))       # VIF values
+Xpcr <- pcr(los ~ ., data = data2[, -c(1,2,3)], scale = TRUE, ncomp = 5)
+coef(Xpcr, intercept = TRUE)
+
+Xpcr_loo <- pcr(los ~ ., data = data2[, -c(1,2,3)], scale = TRUE, validation = "CV", segments = 10, segment.type = "consecutive")
+summary(Xpcr_loo)
+coef(Xpcr_loo)
+
+plot(RMSEP(Xpcr_loo, estimate = "train"), main = "training RMSEP")
+plot(RMSEP(Xpcr_loo, estimate = "CV"), main = "CV MSEP")
+plot(RMSEP(Xpcr_loo, newdata = data2_new, estimate = "test"), main = "validation RMSEP")
+
+plot(RMSEP(Xpcr_loo, estimate = "all", newdata = data2_new))
+
+#Not really meaningful... need a classification output
+
