@@ -10,8 +10,8 @@ dh = nlos_datahandler();
 %init datahandler with a predefined tour.
 %dh = dh.init_AMS_01();
 %dh = dh.init_AMS_02();
-%dh = dh.init_ROT_01();
-dh = dh.init_ROT_02();
+dh = dh.init_ROT_01();
+%dh = dh.init_ROT_02();
 
 %Select constellations
 GPS_flag = true;
