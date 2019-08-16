@@ -11,7 +11,7 @@ dh = nlos_datahandler();
 %dh = dh.init_AMS_01();
 %dh = dh.init_AMS_02();
 dh = dh.init_ROT_01();
-%dh = dh.init_ROT_02();
+%dh = dh.init_ROT_02(); %Not working yet (problem: sat R6, R12, R14 not present in FEdata).
 
 %Select constellations
 GPS_flag = true;
@@ -36,7 +36,16 @@ dh.print_info_per_const(data_subset);
 %learner = nlos_models.svm_linear(predictors, response);
 
 %Model: RBF SVM
+%learner = nlos_models.svm_rbf(predictors, response);
+
+%Model: RBF SVM 2
 learner = nlos_models.svm_rbf(predictors, response);
+
+%Model: Polynomial (order 2) SVM
+%learner = nlos_models.svm_poly2(predictors, response);
+
+%Model: Polynomial (order 3) SVM
+%learner = nlos_models.svm_poly3(predictors, response);
 
 %%
 % Performance

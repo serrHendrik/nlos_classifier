@@ -49,23 +49,26 @@ dh.print_info_per_const(dataset);
 %%
 %Train Learner
 
-% Model 2.1: Decision Tree
+%Model: Decision Tree
 %learner = nlos_models.classification_tree(predictors, response);
 
-%Model 2.2: Linear Discriminant Analysis
+%Model: Linear Discriminant Analysis
 %learner = nlos_models.discriminant_linear(predictors, response);
 
-%Model 2.3: Quadratic Discriminant Analysis
+%Model: Quadratic Discriminant Analysis
 %learner = nlos_models.discriminant_quadratic(predictors, response);
 
-%Model 2.4: K-Nearest Neighbours (Euclidean distance)
+%Model: K-Nearest Neighbours (Euclidean distance)
 %learner = nlos_models.knn_euclidean(predictors, response);
 
-%Model 2.5: K-Nearest Neighbours (Euclidean distance, Squared-Inverse distance weighing)
-learner = nlos_models.knn_euclidean_SIweight(predictors, response);
+%Model: K-Nearest Neighbours (Euclidean distance, Squared-Inverse distance weighing)
+%learner = nlos_models.knn_euclidean_SIweight(predictors, response);
 
-%Model 2.6: K-Nearest Neighbours (Minkowski distance)
+%Model: K-Nearest Neighbours (Minkowski distance)
 %learner = nlos_models.knn_minkowski(predictors, response);
+
+%Model: Ensemble of Trees (bagging)
+learner = nlos_models.ensemble_bagging(predictors, response);
 
 %%
 %Performance
