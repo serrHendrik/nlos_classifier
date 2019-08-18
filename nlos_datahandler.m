@@ -154,6 +154,40 @@ classdef nlos_datahandler
             
         end
         
+        function datatable_norm = normalize_data_per_const(obj, datatable, vars_to_norm)
+            datatable_norm = datatable;
+            
+            for c = 'GER'
+                %get indices
+                c_ind = find(cell2mat(datatable.sv_sys) == c);
+                
+                %norm and insert back
+                datatable_norm{c_ind,vars_to_norm} = normalize(datatable{c_ind,vars_to_norm});
+            
+                if ismember('carrierphase',vars_to_norm)
+                   %Get indices
+                   nonzero_ind = intersect(find(datatable.carrierphase),c_ind, 'stable');
+
+                   %normalise nonzero data
+                   nonzero_el = datatable.carrierphase(nonzero_ind);
+                   cp_norm = normalize(nonzero_el);
+
+                   %create new carrierphase column for constellation c
+                   datatable_norm.carrierphase(c_ind) = datatable.carrierphase(c_ind);
+                   datatable_norm.carrierphase(nonzero_ind) = cp_norm;
+
+                end  
+                
+                
+            end
+            
+
+            
+            
+            
+            
+        end
+        
         function print_info_per_const(obj, datatable)
             mask_GPS = cell2mat(datatable.sv_sys) == 'G';
             mask_GAL = cell2mat(datatable.sv_sys) == 'E';

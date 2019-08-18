@@ -9,7 +9,7 @@ classdef nlos_feature_extractor
         
         function [predictors, response] = extract_standard_features(datatable)
 
-            predictorNames = {'pseudorange', 'cnr', 'doppler', 'el', 'third_ord_diff', 'innovations'};
+            predictorNames = {'pseudorange', 'carrierphase', 'cnr', 'doppler', 'el', 'third_ord_diff', 'innovations'};
             responseName = {'los'};
             predictors = datatable(:, predictorNames);
             response = datatable(:,responseName);
@@ -21,6 +21,37 @@ classdef nlos_feature_extractor
                fprintf('%s ', predictorNames{i})
             end
             fprintf('\n')
+            
+        end
+        
+        function [predictors, response] = extract_features_set2(datatable)
+            
+            %Base Predictors and response
+            [predictors, response] = nlos_feature_extractor.get_basic_features(datatable);
+            
+            %Add LLI
+            predictors = nlos_feature_extractor.get_LLI(predictors,datatable.carrierphase);
+            
+            %Provide user feedback
+            nlos_feature_extractor.print_extracted_features(predictors);
+
+            
+        end
+        
+        function [predictors, response] = extract_features_set3(datatable)
+            
+            %Base Predictors and response
+            [predictors, response] = nlos_feature_extractor.get_basic_features(datatable);
+            
+            %Add LLI
+            predictors = nlos_feature_extractor.get_LLI(predictors,datatable.carrierphase);
+            
+            %Add second order of third_ord_diff and innovations
+            predictors = get_TOD_sq(predictors);
+            predictors = get_inno_sq(predictors);
+            
+            %Provide user feedback
+            nlos_feature_extractor.print_extracted_features(predictors);
             
         end
         
@@ -48,6 +79,54 @@ classdef nlos_feature_extractor
             [Ytest,Ytest_wasMatrix] = tonndata(Ytest_mat,columnSamples,cellTime);
         end
         
+    end
+    
+    methods(Static, Access = private)
+        function [predictors, response] = get_basic_features(datatable)
+            
+            predictorNames = {'pseudorange', 'cnr', 'el', 'third_ord_diff', 'innovations'};
+            responseName = {'los'};
+            
+            predictors = datatable(:, predictorNames);
+            response = datatable(:,responseName);
+            
+        end
+        
+        function [predictors_new] = get_LLI(predictors,CP)
+
+            lli_var = CP == 0;
+            lli_table = table(lli_var, 'VariableNames',{'lli'});
+            predictors_new = [predictors lli_table];
+            
+        end
+        
+        function [predictors_new] = get_TOD_sq(predictors)
+            
+            predictors_new = predictors;
+            predictors_new.third_ord_diff_sq = predictors_new.third_ord_diff .^2;
+            
+            
+        end
+        
+        function [predictors_new] = get_inno_sq(predictors)
+            
+            predictors_new = predictors;
+            predictors_new.innovations_sq = predictors_new.innovations .^2;
+            
+        end
+        
+        function print_extracted_features(predictors)
+            
+            %User feedback:
+            fprintf('\n')
+            disp('Features Extracted:')
+            for i = 1:length(predictors.Properties.VariableNames)
+               fprintf('%s ', predictors.Properties.VariableNames{i})
+            end
+            fprintf('\n')
+            
+        end
+
     end
 end
 
