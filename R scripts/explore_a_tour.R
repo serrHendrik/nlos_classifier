@@ -11,8 +11,14 @@ setwd("C:/Users/nsr/Documents/Hendrik/dev/nlos_classifier/R scripts")
 
 
 #data
+#AMS_01
 #data <- read.csv("../data/AMS_01/AMS_01_datatable.csv", header = TRUE)
-data <- read.csv("../data/ROT_01/ROT_01_datatable.csv", header = TRUE)
+#AMS_02
+data <- read.csv("../data/AMS_02/AMS_02_datatable.csv", header = TRUE)
+#ROT_01
+#data <- read.csv("../data/ROT_01/ROT_01_datatable.csv", header = TRUE)
+#ROT_02
+
 
 data$los <- factor(data$los)
 data$trip_time <- data$common_time - data$common_time[1]
@@ -27,6 +33,8 @@ dataGLO <- subset(data,data[,"sv_sys"] == "R")
 
 
 ### DATA EXPLORATION AND OUTLIER DETECTION
+#Independent variables
+X <- data[,4:13]
 
 #NaN values?
 apply(apply(X,2,is.nan),2,sum)

@@ -15,6 +15,9 @@ classdef nlos_datahandler
     end
     properties
         data
+        GPS_flag
+        GAL_flag
+        GLO_flag
     end
     properties(Dependent)
         full_filename_FEdata
@@ -28,9 +31,26 @@ classdef nlos_datahandler
     end
     
     methods
-        function obj = nlos_datahandler()
-            %empty constructor
-            %call the apropriate tour init function after creating an object.
+        function obj = nlos_datahandler(tour_name, GPS_flag, GAL_flag, GLO_flag)
+            obj.GPS_flag = GPS_flag;
+            obj.GAL_flag = GAL_flag;
+            obj.GLO_flag = GLO_flag;
+            
+            %calls the apropriate tour init function after creating an object.
+            switch tour_name
+                case 'AMS_01'
+                    obj = obj.init_AMS_01();
+                case 'AMS_02'
+                    obj = obj.init_AMS_02();
+                case 'ROT_01'
+                    obj = obj.init_ROT_01();
+                case 'ROT_02'
+                    obj = obj.init_ROT_02();
+            end
+            
+            %Select appropriate constellations
+            obj = obj.select_constellations();
+            
         end
         
         %init function for AMS_01 dataset
@@ -42,8 +62,13 @@ classdef nlos_datahandler
             obj.filename_output = 'AMS_01_datatable.csv';
             
             obj = obj.init_datahandler();
+            
+            %Filter data anomalies based on statistical analysis
+            %remove points with LOS label and innovation > 100
+            obj = obj.filter_innovations(100);
         end
         
+        %init function for AMS_02 dataset
         function obj = init_AMS_02(obj)
             obj.dataset_name = 'AMS_02';
             obj.file_location = 'data/AMS_02/'; 
@@ -52,8 +77,13 @@ classdef nlos_datahandler
             obj.filename_output = 'AMS_02_datatable.csv';
             
             obj = obj.init_datahandler();
+            
+            %Filter data anomalies based on statistical analysis
+            %remove points with LOS label and innovation > 100
+            obj = obj.filter_innovations(100);
         end
         
+        %init function for ROT_01 dataset
         function obj = init_ROT_01(obj)
             obj.dataset_name = 'ROT_01';
             obj.file_location = 'data/ROT_01/'; 
@@ -61,9 +91,16 @@ classdef nlos_datahandler
             obj.filename_PNT2data = 'PNT2data.mat';
             obj.filename_output = 'ROT_01_datatable.csv';
             
-            obj = obj.init_datahandler();            
+            obj = obj.init_datahandler();
+            
+            %Filter data anomalies based on statistical analysis
+            %remove points with LOS label and innovation > 100
+            obj = obj.filter_innovations(100);
+            
+            
         end
         
+        %init function for ROT_02 dataset
         function obj = init_ROT_02(obj)
             obj.dataset_name = 'ROT_02';
             obj.file_location = 'data/ROT_02/'; 
@@ -71,7 +108,11 @@ classdef nlos_datahandler
             obj.filename_PNT2data = 'PNT2data.mat';
             obj.filename_output = 'ROT_02_datatable.csv';
             
-            obj = obj.init_datahandler();            
+            obj = obj.init_datahandler();   
+            
+            %Filter data anomalies based on statistical analysis
+            %remove points with LOS label and innovation > 100
+            obj = obj.filter_innovations(100);
         end
         
         
@@ -104,31 +145,30 @@ classdef nlos_datahandler
            v = 1 - obj.fraction_los;
         end
         
-        function datatable_masked = select_constellations(obj, datatable, GPS_flag, GAL_flag, GLO_flag)
-            datatable_masked = table([]);
+        function obj = select_constellations(obj)
             
-            if ~GPS_flag && ~GAL_flag && ~GLO_flag
+            if ~obj.GPS_flag && ~obj.GAL_flag && ~obj.GLO_flag
                 disp('No constellation selected.')
                 return
             end
             
-            mask_GPS = cell2mat(datatable.sv_sys) == 'G';
-            mask_GAL = cell2mat(datatable.sv_sys) == 'E';
-            mask_GLO = cell2mat(datatable.sv_sys) == 'R';
+            mask_GPS = cell2mat(obj.data.sv_sys) == 'G';
+            mask_GAL = cell2mat(obj.data.sv_sys) == 'E';
+            mask_GLO = cell2mat(obj.data.sv_sys) == 'R';
             
-            mask = GPS_flag&mask_GPS | GAL_flag&mask_GAL | GLO_flag&mask_GLO;
+            mask = obj.GPS_flag&mask_GPS | obj.GAL_flag&mask_GAL | obj.GLO_flag&mask_GLO;
             
-            datatable_masked = datatable(mask,:); 
+            obj.data = obj.data(mask,:); 
             
             %User feedback:
             disp('Selected constellations:')
-            if GPS_flag
+            if obj.GPS_flag
                 fprintf('GPS ')
             end
-            if GAL_flag
+            if obj.GAL_flag
                 fprintf('GAL ')
             end
-            if GLO_flag
+            if obj.GLO_flag
                 fprintf('GLO ')
             end
             fprintf('\n\n')
@@ -361,7 +401,7 @@ classdef nlos_datahandler
             fprintf('Filter: remove first %d timesteps. \nRecords %d -> %d\nFraction LOS: %.2f -> %.2f\n', ...
                 timesteps_to_trim, nb_records_before, nb_records_after, fraction_los_before, obj.fraction_los);
             
-            %filter satellites below horizon or no label available
+            %filter satellites below horizon or no LOS label available
             nb_records_before = height(obj.data);
             fraction_los_before = obj.fraction_los;
             nan_mask = isnan(obj.data.los(:)); 
@@ -510,6 +550,15 @@ classdef nlos_datahandler
             fprintf('Loading data table... ')
             obj.data = readtable(obj.full_filename_output);
             fprintf('done!\n')   
+            
+        end
+        
+        function obj = filter_innovations(obj, threshold)
+           
+            remove_rows = obj.data.los == 1 & obj.data.innovations > threshold;
+            obj.data = obj.data(~remove_rows,:);
+            
+            fprintf('Removed %d LOS rows with innovation > %d\n\n', sum(remove_rows), threshold)
             
         end
         

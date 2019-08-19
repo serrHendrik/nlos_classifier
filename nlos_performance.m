@@ -32,7 +32,27 @@ classdef nlos_performance
             %print results
             nlos_performance.print_hard_classification_report(precision_LOS, precision_NLOS, recall_LOS, recall_NLOS, F1_LOS, F1_NLOS, accuracy);
             
+            %Show confusion table
+            Y_cat = categorical(Y, [0 1], {'NLOS', 'LOS'});
+            Yhat_cat = categorical(Yhat, [0 1], {'NLOS', 'LOS'});
+            plotconfusion(Y_cat,Yhat_cat);
             
+        end
+        
+        function nlos_roc(Y,Yhat_scores)
+            
+            %Compute ROC variables
+            posClass = 1;
+            [ROC_X,ROC_Y,ROC_T,AUC,OPTROCPT] = perfcurve(Y,Yhat_scores(:,2),posClass);
+            
+            %Plot
+            plot(ROC_X,ROC_Y)
+            hold on
+            plot(OPTROCPT(1),OPTROCPT(2),'ro')
+            xlabel('False LOS rate') 
+            ylabel('True LOS rate')
+            title(['ROC Curve (AUC = ', num2str(AUC), ')'])
+            hold off
         end
         
         function Yhat_onehot_hard = soft_to_hard(Yhat_onehot_soft)
@@ -49,6 +69,7 @@ classdef nlos_performance
             end            
         end
     end
+    
     methods(Static, Access = private)
         function [True_LOS, False_LOS, True_NLOS, False_NLOS] = get_base_statistics(Y,Yhat)
             True_LOS = 0;

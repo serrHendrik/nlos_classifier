@@ -9,18 +9,11 @@ classdef nlos_feature_extractor
         
         function [predictors, response] = extract_standard_features(datatable)
 
-            predictorNames = {'pseudorange', 'carrierphase', 'cnr', 'doppler', 'el', 'third_ord_diff', 'innovations'};
-            responseName = {'los'};
-            predictors = datatable(:, predictorNames);
-            response = datatable(:,responseName);
+            %Base Predictors and response
+            [predictors, response] = nlos_feature_extractor.get_basic_features(datatable);
             
-            %User feedback:
-            fprintf('\n')
-            disp('Features Extracted:')
-            for i = 1:length(predictorNames)
-               fprintf('%s ', predictorNames{i})
-            end
-            fprintf('\n')
+            %Provide user feedback
+            nlos_feature_extractor.print_extracted_features(predictors);
             
         end
         
@@ -38,6 +31,31 @@ classdef nlos_feature_extractor
             
         end
         
+        function [predictors_deep, response_deep] = extract_features_set2_deep_learning(datatable)
+            
+            %Base Predictors and response
+            [predictors, response] = nlos_feature_extractor.get_basic_features(datatable);
+            
+            %Add LLI
+            predictors = nlos_feature_extractor.get_LLI(predictors,datatable.carrierphase);
+            
+            %Adapt datatypes
+            nb_feat = width(predictors);
+            nb_samples = height(predictors);
+
+            pred_mat = predictors{:,:};
+            pred_mat = pred_mat';
+            predictors_deep = reshape(pred_mat,nb_feat,1,1,nb_samples);
+
+            resp_mat = response{:,:};
+            response_deep = categorical(resp_mat,[0 1], {'0', '1'});
+            
+            %Provide user feedback
+            nlos_feature_extractor.print_extracted_features(predictors); 
+            
+        end
+        
+        
         function [predictors, response] = extract_features_set3(datatable)
             
             %Base Predictors and response
@@ -47,8 +65,8 @@ classdef nlos_feature_extractor
             predictors = nlos_feature_extractor.get_LLI(predictors,datatable.carrierphase);
             
             %Add second order of third_ord_diff and innovations
-            predictors = get_TOD_sq(predictors);
-            predictors = get_inno_sq(predictors);
+            predictors = nlos_feature_extractor.get_TOD_sq(predictors);
+            predictors = nlos_feature_extractor.get_inno_sq(predictors);
             
             %Provide user feedback
             nlos_feature_extractor.print_extracted_features(predictors);
@@ -84,7 +102,7 @@ classdef nlos_feature_extractor
     methods(Static, Access = private)
         function [predictors, response] = get_basic_features(datatable)
             
-            predictorNames = {'pseudorange', 'cnr', 'el', 'third_ord_diff', 'innovations'};
+            predictorNames = {'pseudorange', 'doppler', 'cnr', 'el', 'third_ord_diff', 'innovations'};
             responseName = {'los'};
             
             predictors = datatable(:, predictorNames);
@@ -103,15 +121,14 @@ classdef nlos_feature_extractor
         function [predictors_new] = get_TOD_sq(predictors)
             
             predictors_new = predictors;
-            predictors_new.third_ord_diff_sq = predictors_new.third_ord_diff .^2;
-            
+            predictors_new.third_ord_diff_sq = sqrt(predictors_new.third_ord_diff .^2);
             
         end
         
         function [predictors_new] = get_inno_sq(predictors)
             
             predictors_new = predictors;
-            predictors_new.innovations_sq = predictors_new.innovations .^2;
+            predictors_new.innovations_sq = sqrt(predictors_new.innovations .^2);
             
         end
         
