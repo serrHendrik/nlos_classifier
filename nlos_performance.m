@@ -7,7 +7,7 @@ classdef nlos_performance
     end
     
     methods(Static)
-        function hard_classification_report(Y,Yhat)
+        function hard_classification_report(Y,Yhat, train_flag)
             %Y = cell2mat(Y_cell);
             %Yhat_ = cell2mat(Yhat_cell);
            
@@ -33,9 +33,15 @@ classdef nlos_performance
             nlos_performance.print_hard_classification_report(precision_LOS, precision_NLOS, recall_LOS, recall_NLOS, F1_LOS, F1_NLOS, accuracy);
             
             %Show confusion table
+            if train_flag
+                title = 'TRAINING';
+            else
+                title = 'VALIDATION';
+            end
             Y_cat = categorical(Y, [0 1], {'NLOS', 'LOS'});
             Yhat_cat = categorical(Yhat, [0 1], {'NLOS', 'LOS'});
-            plotconfusion(Y_cat,Yhat_cat);
+            figure;
+            plotconfusion(Y_cat,Yhat_cat, title);
             
         end
         

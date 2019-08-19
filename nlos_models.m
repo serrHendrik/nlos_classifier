@@ -33,7 +33,7 @@ classdef nlos_models
             
         end
         
-        function learner = discriminant_linear(predictors, response)
+        function learner = discriminant_linear(predictors, response, cv_flag)
            fprintf('Training linear discriminant analysis model... ');
             
             learner = fitcdiscr(...
@@ -49,7 +49,7 @@ classdef nlos_models
 
         end
         
-        function learner = discriminant_quadratic(predictors, response)
+        function learner = discriminant_quadratic(predictors, response, cv_flag)
            fprintf('Training linear discriminant analysis model... ');
             
             learner = fitcdiscr(...
@@ -64,7 +64,7 @@ classdef nlos_models
 
         end
         
-        function learner = knn_euclidean(predictors, response)
+        function learner = knn_euclidean(predictors, response, cv_flag)
             fprintf('Training KNN (K=10) Euclidean model... ');
             
             learner = fitcknn(...
@@ -82,7 +82,7 @@ classdef nlos_models
             
         end
         
-        function learner = knn_euclidean_SIweight(predictors, response)
+        function learner = knn_euclidean_SIweight(predictors, response, cv_flag)
             fprintf('Training KNN (K=10) Euclidean model  with SquaredInverse weighing... ');
             
             learner = fitcknn(...
@@ -100,7 +100,7 @@ classdef nlos_models
             
          end
         
-        function learner = knn_minkowski(predictors, response)
+        function learner = knn_minkowski(predictors, response, cv_flag)
             fprintf('Training KNN (K=10) Minkowski model... ');
             
             learner = fitcknn(...
@@ -118,7 +118,7 @@ classdef nlos_models
             
         end 
         
-        function learner = ensemble_bagging(predictors, response)
+        function learner = ensemble_bagging(predictors, response, cv_flag)
             
             fprintf('Training Ensemble (Bagging) model... ');
             
@@ -137,7 +137,7 @@ classdef nlos_models
             fprintf('done!\n');
         end
         
-        function learner = svm_linear(predictors, response)
+        function learner = svm_linear(predictors, response, cv_flag)
             fprintf('Training linear SVM model... ');
             
             learner = fitcsvm(...
@@ -169,7 +169,7 @@ classdef nlos_models
             fprintf('done!\n');
         end  
         
-        function learner = svm_rbf(predictors, response)
+        function learner = svm_rbf(predictors, response, cv_flag)
             fprintf('Training RBF SVM model... ');
             
             learner = fitcsvm(...
@@ -183,7 +183,7 @@ classdef nlos_models
             fprintf('done!\n');
         end
         
-        function learner = svm_rbf2(predictors, response)
+        function learner = svm_rbf2(predictors, response, cv_flag)
             fprintf('Training RBF SVM model 2 ... ');
             
             learner = fitcsvm(...
@@ -200,7 +200,7 @@ classdef nlos_models
             fprintf('done!\n');
         end
         
-        function learner = svm_poly2(predictors, response)
+        function learner = svm_poly2(predictors, response, cv_flag)
             fprintf('Training Polynomial (order 2) SVM model... ');
             
         	learner = fitcsvm(...
@@ -211,12 +211,13 @@ classdef nlos_models
                 'KernelScale', 0.66, ...
                 'BoxConstraint', 1, ...
                 'Standardize', true, ...
-                'ClassNames', [0; 1]);
+                'ClassNames', [0; 1], ...
+                'KFold', 10);
             
             fprintf('done!\n');
         end
         
-        function learner = svm_poly3(predictors, response)
+        function learner = svm_poly3(predictors, response, cv_flag)
             fprintf('Training Polynomial (order 3) SVM model... ');
             
         	learner = fitcsvm(...
@@ -227,7 +228,8 @@ classdef nlos_models
                 'KernelScale', 0.66, ...
                 'BoxConstraint', 1, ...
                 'Standardize', true, ...
-                'ClassNames', [0; 1]);
+                'ClassNames', [0; 1], ...
+                'KFold', 10);
             
             fprintf('done!\n');
         end        

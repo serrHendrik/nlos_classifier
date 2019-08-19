@@ -31,7 +31,7 @@ classdef nlos_datahandler
     end
     
     methods
-        function obj = nlos_datahandler(tour_name, GPS_flag, GAL_flag, GLO_flag)
+        function obj = nlos_datahandler(tour_name, GPS_flag, GAL_flag, GLO_flag,normalize_flag)
             obj.GPS_flag = GPS_flag;
             obj.GAL_flag = GAL_flag;
             obj.GLO_flag = GLO_flag;
@@ -50,6 +50,12 @@ classdef nlos_datahandler
             
             %Select appropriate constellations
             obj = obj.select_constellations();
+            
+            %Normalize data per constellation if requested
+            if normalize_flag
+                vars_to_norm = {'pseudorange', 'carrierphase', 'cnr', 'doppler', 'az', 'az_cm', 'el', 'el_cm', 'third_ord_diff', 'innovations'};
+                obj = obj.normalize_data_per_const(vars_to_norm); 
+            end
             
         end
         
@@ -110,7 +116,7 @@ classdef nlos_datahandler
             
             obj = obj.init_datahandler();   
             
-            %Filter data anomalies based on statistical analysis
+            %Filter data anomalies based on statistical analysis, specific to this dataset
             %remove points with LOS label and innovation > 100
             obj = obj.filter_innovations(100);
         end
@@ -194,38 +200,33 @@ classdef nlos_datahandler
             
         end
         
-        function datatable_norm = normalize_data_per_const(obj, datatable, vars_to_norm)
-            datatable_norm = datatable;
+        function obj = normalize_data_per_const(obj, vars_to_norm)
+            datatable_norm = obj.data;
             
             for c = 'GER'
                 %get indices
-                c_ind = find(cell2mat(datatable.sv_sys) == c);
+                c_ind = find(cell2mat(obj.data.sv_sys) == c);
                 
                 %norm and insert back
-                datatable_norm{c_ind,vars_to_norm} = normalize(datatable{c_ind,vars_to_norm});
+                datatable_norm{c_ind,vars_to_norm} = normalize(obj.data{c_ind,vars_to_norm});
             
                 if ismember('carrierphase',vars_to_norm)
                    %Get indices
-                   nonzero_ind = intersect(find(datatable.carrierphase),c_ind, 'stable');
+                   nonzero_ind = intersect(find(obj.data.carrierphase),c_ind, 'stable');
 
                    %normalise nonzero data
-                   nonzero_el = datatable.carrierphase(nonzero_ind);
+                   nonzero_el = obj.data.carrierphase(nonzero_ind);
                    cp_norm = normalize(nonzero_el);
 
                    %create new carrierphase column for constellation c
-                   datatable_norm.carrierphase(c_ind) = datatable.carrierphase(c_ind);
+                   datatable_norm.carrierphase(c_ind) = obj.data.carrierphase(c_ind);
                    datatable_norm.carrierphase(nonzero_ind) = cp_norm;
 
                 end  
-                
-                
             end
             
+            obj.data = datatable_norm;
 
-            
-            
-            
-            
         end
         
         function print_info_per_const(obj, datatable)
@@ -296,7 +297,7 @@ classdef nlos_datahandler
             end
             
             %Info on dataset
-            fprintf('\n*** Dataset Info ***\n');
+            fprintf('\n*** Dataset Initialisation Info ***\n');
             fprintf('Dataset name: %s\n', obj.dataset_name);
             fprintf('Duration of trip [HH:MM:SS]: %s\n', datestr(seconds(obj.time_total),'HH:MM:SS'));
             fprintf('Number of labelled satellites: %d\n', obj.labelled_sats);

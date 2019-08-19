@@ -12,15 +12,17 @@ GLO_flag = false;
 tour = 'ROT_01';
 %tour = 'ROT_02';
 
-%Create datahandler
-dh = nlos_datahandler(tour, GPS_flag, GAL_flag, GLO_flag);
+%Normalize numeric predictors?
+normalize_flag = true;
 
-%Normalise per constellation
-%vars_to_norm = {'pseudorange', 'carrierphase', 'cnr', 'doppler', 'az', 'az_cm', 'el', 'el_cm', 'third_ord_diff', 'innovations'};
-%dataset = dh.normalize_data_per_const(dataset,vars_to_norm);
+%Create datahandler
+dh = nlos_datahandler(tour, GPS_flag, GAL_flag, GLO_flag, normalize_flag);
 
 %Sampling
 %Not required for basic learners
+
+%Extract final dataset from datahandler
+dataset = dh.data;
 
 %Info
 dh.print_info_per_const(dataset);
@@ -39,6 +41,8 @@ dh.print_info_per_const(dataset);
 
 %%
 %Train Learner
+
+%For basic_cv learners, set cv = true (CV = Cross Validation)
 cv_flag = true;
 
 
