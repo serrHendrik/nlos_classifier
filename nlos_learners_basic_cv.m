@@ -45,7 +45,6 @@ dh.print_info_per_const(dataset);
 %For basic_cv learners, set cv = true (CV = Cross Validation)
 cv_flag = true;
 
-
 %Model: Decision Tree
 learner = nlos_models.classification_tree(predictors, response, cv_flag);
 

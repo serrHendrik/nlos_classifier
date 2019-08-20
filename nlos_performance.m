@@ -7,9 +7,9 @@ classdef nlos_performance
     end
     
     methods(Static)
-        function hard_classification_report(Y,Yhat, train_flag)
+        function hard_classification_report(Y,Yhat, plot_title)
             %Y = cell2mat(Y_cell);
-            %Yhat_ = cell2mat(Yhat_cell);
+            %Yhat_ = cell2mat(Yhat_cell);plot_title
            
             %Soft to hard prediction
             %Yhat = nlos_performance.soft_to_hard(Yhat_);
@@ -33,31 +33,32 @@ classdef nlos_performance
             nlos_performance.print_hard_classification_report(precision_LOS, precision_NLOS, recall_LOS, recall_NLOS, F1_LOS, F1_NLOS, accuracy);
             
             %Show confusion table
-            if train_flag
-                title = 'TRAINING';
-            else
-                title = 'VALIDATION';
-            end
+            ind_ = strfind(plot_title, '_');
+            title_modified = [plot_title(1:ind_-1) '\' plot_title(ind_:end)];
             Y_cat = categorical(Y, [0 1], {'NLOS', 'LOS'});
             Yhat_cat = categorical(Yhat, [0 1], {'NLOS', 'LOS'});
             figure;
-            plotconfusion(Y_cat,Yhat_cat, title);
+            plotconfusion(Y_cat,Yhat_cat, title_modified);
             
         end
         
-        function nlos_roc(Y,Yhat_scores)
+        function nlos_roc(Y,Yhat_scores, plot_title)
             
             %Compute ROC variables
             posClass = 1;
             [ROC_X,ROC_Y,ROC_T,AUC,OPTROCPT] = perfcurve(Y,Yhat_scores(:,2),posClass);
             
+            ind_ = strfind(plot_title, '_');
+            title_modified = [plot_title(1:ind_-1) '\' plot_title(ind_:end)];
+            
             %Plot
+            figure;
             plot(ROC_X,ROC_Y)
             hold on
             plot(OPTROCPT(1),OPTROCPT(2),'ro')
             xlabel('False LOS rate') 
             ylabel('True LOS rate')
-            title(['ROC Curve (AUC = ', num2str(AUC), ')'])
+            title([title_modified, ' ROC Curve (AUC = ', num2str(AUC), ')'])
             hold off
         end
         

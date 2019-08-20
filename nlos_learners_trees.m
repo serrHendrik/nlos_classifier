@@ -52,60 +52,64 @@ dh_val.print_info_per_const(Dval);
 %[Xval, Yval] = nlos_feature_extractor.extract_features_set3(Dval);
 
 %%
-%Train Learner
+%Try auto-tuning hyperparameters
+%Result -> MinLeafSize = 18-24
 
-%For basic_holdout learners, set cv = false (CV = Cross Validation)
-cv_flag = false;
+%learner = fitctree(Xtrain,Ytrain,'OptimizeHyperparameters','auto');
 
+% learner = fitctree(Xtrain,Ytrain,...
+%     'OptimizeHyperparameters','auto',...
+%     'HyperparameterOptimizationOptions',struct('Holdout',0.3,...
+%     'AcquisitionFunctionName','expected-improvement-plus'));
 
-%Model: Decision Tree
-learner = nlos_models.classification_tree(Xtrain, Ytrain, cv_flag);
+%Train Custom Learner
+learner = fitctree(...
+    Xtrain, ...
+    Ytrain, ...
+    'SplitCriterion', 'gdi', ...
+    'MaxNumSplits', 2000, ...
+    'MinLeafSize', 1, ...
+    'Surrogate', 'off', ...
+    'ScoreTransform', 'none', ...
+    'ClassNames', [0; 1]); 
 
-%Model: Linear Discriminant Analysis
-%learner = nlos_models.discriminant_linear(Xtrain, Ytrain, cv_flag);
-
-%Model: Quadratic Discriminant Analysis
-%learner = nlos_models.discriminant_quadratic(Xtrain, Ytrain, cv_flag);
-
-%Model: K-Nearest Neighbours (Euclidean distance)
-%learner = nlos_models.knn_euclidean(Xtrain, Ytrain, cv_flag);
-
-%Model: K-Nearest Neighbours (Euclidean distance, Squared-Inverse distance weighing)
-%learner = nlos_models.knn_euclidean_SIweight(Xtrain, Ytrain, cv_flag);
-
-%Model: K-Nearest Neighbours (Minkowski distance)
-%learner = nlos_models.knn_minkowski(Xtrain, Ytrain, cv_flag);
-
-%Model: Ensemble of Trees (bagging)
-%learner = nlos_models.ensemble_bagging(Xtrain, Ytrain, cv_flag);
+%    
 
 %%
 %Performance
 
-train_flag = true;
+%%
+%Predict importance of the variables
+imp = predictorImportance(learner);
+
+figure;
+bar(imp);
+title('Predictor Importance Estimates');
+ylabel('Estimates');
+xlabel('Predictors');
+h = gca;
+h.XTickLabel = learner.PredictorNames;
+h.XTickLabelRotation = 45;
+h.TickLabelInterpreter = 'none';
+
+%%
 
 %Training data
-Ytrain_predict = predict(learner,Xtrain);
+[Ytrain_predict, Ytrain_scores] = predict(learner,Xtrain);
 Ytrain_mat = table2array(Ytrain);
-nlos_performance.hard_classification_report(Ytrain_mat,Ytrain_predict, train_flag);
+train_title_info = ['TRAINGING SET ', tour_train];
+
+nlos_performance.hard_classification_report(Ytrain_mat,Ytrain_predict, train_title_info);
+nlos_performance.nlos_roc(Ytrain_mat,Ytrain_scores, train_title_info);
 
 %Validation data
 [Yval_predict, Yval_scores] = predict(learner,Xval);
 Yval_mat = table2array(Yval);
-nlos_performance.hard_classification_report(Yval_mat,Yval_predict, ~train_flag);
+val_title_info = ['VALIDATION SET ', tour_val];
 
+nlos_performance.hard_classification_report(Yval_mat,Yval_predict, val_title_info);
+nlos_performance.nlos_roc(Yval_mat,Yval_scores, val_title_info);
 
-%Obtaining scores possible with these learners? (possible with
-%kfoldPredict...)
-
-
-% %Predict
-% [validationPredictions, validationScores] = kfoldPredict(learner);
-% 
-% %Report
-% response_mat = table2array(response);
-% nlos_performance.hard_classification_report(response_mat,validationPredictions);
-% nlos_performance.nlos_roc(response_mat,validationScores);
 
 
 
