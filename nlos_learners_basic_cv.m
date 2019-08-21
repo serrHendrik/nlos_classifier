@@ -31,13 +31,13 @@ dh.print_info_per_const(dataset);
 %Feature Engineering
 
 %Standard features
-%[predictors, response] = nlos_feature_extractor.extract_standard_features(dataset);
+[predictors, response] = nlos_feature_extractor.extract_standard_features(dataset);
 
 %Feature set 2
 %[predictors, response] = nlos_feature_extractor.extract_features_set2(dataset);
 
 %Feature set 3
-[predictors, response] = nlos_feature_extractor.extract_features_set3(dataset);
+%[predictors, response] = nlos_feature_extractor.extract_features_set3(dataset);
 
 %%
 %Train Learner
@@ -46,7 +46,7 @@ dh.print_info_per_const(dataset);
 cv_flag = true;
 
 %Model: Decision Tree
-learner = nlos_models.classification_tree(predictors, response, cv_flag);
+%learner = nlos_models.classification_tree(predictors, response, cv_flag);
 
 %Model: Linear Discriminant Analysis
 %learner = nlos_models.discriminant_linear(predictors, response);
@@ -61,7 +61,7 @@ learner = nlos_models.classification_tree(predictors, response, cv_flag);
 %learner = nlos_models.knn_euclidean_SIweight(predictors, response);
 
 %Model: K-Nearest Neighbours (Minkowski distance)
-%learner = nlos_models.knn_minkowski(predictors, response);
+learner = nlos_models.knn_minkowski(predictors, response);
 
 %Model: Ensemble of Trees (bagging)
 %learner = nlos_models.ensemble_bagging(predictors, response);

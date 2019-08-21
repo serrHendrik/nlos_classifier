@@ -3,18 +3,18 @@
 
 %Select constellations
 GPS_flag = true;
-GAL_flag = false; 
+GAL_flag = true; 
 GLO_flag = false;
 
 %Select TRAINING tour
-%tour_train = 'AMS_01';
+tour_train = 'AMS_01';
 %tour_train = 'AMS_02';
-tour_train = 'ROT_01';
+%tour_train = 'ROT_01';
 %tour_train = 'ROT_02';
 
 %Select VALIDATION tour
-tour_val = 'AMS_01';
-%tour_val = 'AMS_02';
+%tour_val = 'AMS_01';
+tour_val = 'AMS_02';
 %tour_val = 'ROT_01';
 %tour_val = 'ROT_02';
 
@@ -63,24 +63,36 @@ dh_val.print_info_per_const(Dval);
 %     'AcquisitionFunctionName','expected-improvement-plus'));
 
 %Train Custom Learner
-learner = fitctree(...
+learner1 = fitctree(...
     Xtrain, ...
     Ytrain, ...
     'SplitCriterion', 'gdi', ...
-    'MaxNumSplits', 2000, ...
+    'MaxNumSplits', 800, ...
     'MinLeafSize', 1, ...
-    'Surrogate', 'off', ...
+    'Surrogate', 'on', ...
     'ScoreTransform', 'none', ...
     'ClassNames', [0; 1]); 
 
-%    
 
 %%
-%Performance
+%Performance learner1
+
+nlos_performance.validate_learner(learner1, tour_train, tour_val, Xtrain, Ytrain, Xval, Yval)
+
+
+%%
+% Prune learner
+
+%Find optimal tree depth
+[~,~,~,bestlevel] = cvLoss(learner1,'SubTrees','All','TreeSize','min');
+view(learner1,'Mode','Graph','Prune',bestlevel)
+
+learner2 = prune(learner1,'Level',bestlevel); 
+%view(learner,'Mode','Graph')
 
 %%
 %Predict importance of the variables
-imp = predictorImportance(learner);
+imp = predictorImportance(learner2);
 
 figure;
 bar(imp);
@@ -88,29 +100,46 @@ title('Predictor Importance Estimates');
 ylabel('Estimates');
 xlabel('Predictors');
 h = gca;
-h.XTickLabel = learner.PredictorNames;
+h.XTickLabel = learner2.PredictorNames;
 h.XTickLabelRotation = 45;
 h.TickLabelInterpreter = 'none';
 
 %%
+%Performance learner2
+nlos_performance.validate_learner(learner2, tour_train, tour_val, Xtrain, Ytrain, Xval, Yval);
 
-%Training data
-[Ytrain_predict, Ytrain_scores] = predict(learner,Xtrain);
-Ytrain_mat = table2array(Ytrain);
+%%
+
+% Overfit model
+
+learner3 = fitctree(...
+    Xtrain, ...
+    Ytrain, ...
+    'SplitCriterion', 'gdi', ...
+    'MaxNumSplits', 10000, ...
+    'MinLeafSize', 1, ...
+    'Surrogate', 'on', ...
+    'ScoreTransform', 'none', ...
+    'ClassNames', [0; 1]); 
+
+%%
+%Performance learner3
+
+nlos_performance.validate_learner(learner3, tour_train, tour_val, Xtrain, Ytrain, Xval, Yval);
+
+%%
+%ROC-curve of three learners
 train_title_info = ['TRAINGING SET ', tour_train];
-
-nlos_performance.hard_classification_report(Ytrain_mat,Ytrain_predict, train_title_info);
-nlos_performance.nlos_roc(Ytrain_mat,Ytrain_scores, train_title_info);
-
-%Validation data
-[Yval_predict, Yval_scores] = predict(learner,Xval);
-Yval_mat = table2array(Yval);
 val_title_info = ['VALIDATION SET ', tour_val];
+learners = {learner1, learner2, learner3};
+learner_names = ["DT-basecase", "DT-pruned", "DT-overfit"];
 
-nlos_performance.hard_classification_report(Yval_mat,Yval_predict, val_title_info);
-nlos_performance.nlos_roc(Yval_mat,Yval_scores, val_title_info);
+%Training ROC
+Ytrain_mat = table2array(Ytrain);
+nlos_performance.nlos_roc_multiple(Xtrain, Ytrain_mat, learners, learner_names, train_title_info);
 
-
-
+%Validation ROC
+Yval_mat = table2array(Yval);
+nlos_performance.nlos_roc_multiple(Xval, Yval_mat, learners, learner_names, val_title_info);
 
 

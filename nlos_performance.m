@@ -7,6 +7,26 @@ classdef nlos_performance
     end
     
     methods(Static)
+        
+        function validate_learner(learner, tour_train, tour_val, Xtrain, Ytrain, Xval, Yval)
+            %Training data
+            [Ytrain_predict, Ytrain_scores] = predict(learner,Xtrain);
+            Ytrain_mat = table2array(Ytrain);
+            train_title_info = ['TRAINGING SET ', tour_train];
+
+            nlos_performance.hard_classification_report(Ytrain_mat,Ytrain_predict, train_title_info)
+            %nlos_performance.nlos_roc(Ytrain_mat,Ytrain_scores, train_title_info);
+
+            %Validation data
+            [Yval_predict, Yval_scores] = predict(learner,Xval);
+            Yval_mat = table2array(Yval);
+            val_title_info = ['VALIDATION SET ', tour_val];
+
+            nlos_performance.hard_classification_report(Yval_mat,Yval_predict, val_title_info);
+            %nlos_performance.nlos_roc(Yval_mat,Yval_scores, val_title_info);
+
+        end
+
         function hard_classification_report(Y,Yhat, plot_title)
             %Y = cell2mat(Y_cell);
             %Yhat_ = cell2mat(Yhat_cell);plot_title
@@ -60,6 +80,31 @@ classdef nlos_performance
             ylabel('True LOS rate')
             title([title_modified, ' ROC Curve (AUC = ', num2str(AUC), ')'])
             hold off
+        end
+        
+        function nlos_roc_multiple(X, Y, learners, learner_names, plot_title)
+            
+            ind_ = strfind(plot_title, '_');
+            title_modified = [plot_title(1:ind_-1) '\' plot_title(ind_:end)];
+            posClass = 1;
+            
+            %Plot
+            figure;
+            hold on
+            for k = 1:length(learners)
+                learner = learners{k};
+                [~, Yscores] = predict(learner,X);
+                [ROC_X,ROC_Y,ROC_T,AUC,OPTROCPT] = perfcurve(Y,Yscores(:,2),posClass);
+                name = strcat(learner_names(k), ' [AUC=', num2str(AUC), ']');
+                plot(ROC_X,ROC_Y, 'DisplayName', name);
+            end
+            xlabel('False LOS rate') 
+            ylabel('True LOS rate')
+            legend('-DynamicLegend', 'Location','Best')
+            title([title_modified, ' ROC Curve'])
+            hold off           
+            
+            
         end
         
         function Yhat_onehot_hard = soft_to_hard(Yhat_onehot_soft)

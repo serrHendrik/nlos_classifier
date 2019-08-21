@@ -7,14 +7,14 @@ GAL_flag = false;
 GLO_flag = false;
 
 %Select TRAINING tour
-%tour_train = 'AMS_01';
+tour_train = 'AMS_01';
 %tour_train = 'AMS_02';
-tour_train = 'ROT_01';
+%tour_train = 'ROT_01';
 %tour_train = 'ROT_02';
 
 %Select VALIDATION tour
-tour_val = 'AMS_01';
-%tour_val = 'AMS_02';
+%tour_val = 'AMS_01';
+tour_val = 'AMS_02';
 %tour_val = 'ROT_01';
 %tour_val = 'ROT_02';
 
@@ -40,11 +40,12 @@ dh_val.print_info_per_const(Dval);
 %Feature Engineering
 
 %Standard features
-%[predictors, response] = nlos_feature_extractor.extract_standard_features(dataset);
+[Xtrain, Ytrain] = nlos_feature_extractor.extract_standard_features_deep_learning(Dtrain);
+[Xval, Yval] = nlos_feature_extractor.extract_standard_features_deep_learning(Dval);
 
 %Feature set 2
-[predictors_deep, response_deep] = nlos_feature_extractor.extract_features_set2_deep_learning(Dtrain);
-[predictors_deep_val, response_deep_val] = nlos_feature_extractor.extract_features_set2_deep_learning(Dval);
+%[Xtrain, Ytrain] = nlos_feature_extractor.extract_features_set2_deep_learning(Dtrain);
+%[Xval, Yval] = nlos_feature_extractor.extract_features_set2_deep_learning(Dval);
 
 %Feature set 3
 %[predictors, response] = nlos_feature_extractor.extract_features_set3(dataset);
@@ -52,7 +53,7 @@ dh_val.print_info_per_const(Dval);
 %%
 % Learner
 
-nb_feat = size(predictors_deep,1);
+nb_feat = size(Xtrain,1);
 
 weight_NLOS = dh_train.fraction_los;
 weight_LOS = 1 - weight_NLOS;
@@ -62,11 +63,11 @@ layers = [
     imageInputLayer([nb_feat 1 1],"Name","imageinput")
     
     fullyConnectedLayer(10)
-    batchNormalizationLayer
+    %batchNormalizationLayer
     reluLayer
     
     fullyConnectedLayer(10)
-    batchNormalizationLayer
+    %batchNormalizationLayer
     reluLayer
     
     fullyConnectedLayer(2)
@@ -80,25 +81,31 @@ options = trainingOptions('adam', ...
     'InitialLearnRate',0.001, ...
     'MaxEpochs',4, ...
     'Shuffle','every-epoch', ...
-    'ValidationData',{predictors_deep_val,response_deep_val}, ...
-    'ValidationFrequency',30, ...
+    'ValidationData',{Xval,Yval}, ...
+    'ValidationFrequency',500, ...
     'Verbose',false, ...
     'Plots','training-progress', ...
     'ExecutionEnvironment', 'gpu');
 
-net = trainNetwork(predictors_deep,response_deep,layers,options);
+net = trainNetwork(Xtrain,Ytrain,layers,options);
 
 
 %% Evaluation
 
-responsePredicted = classify(net,predictors_deep_val);
+Ytrain_predicted = classify(net,Xtrain);
+Yval_predicted = classify(net,Xval);
 
 %Convert categoricals to numerical
-Y = double(string(response_deep_val));
-Yhat = double(string(responsePredicted));
+Ytrain_base = double(string(Ytrain));
+Yval_base = double(string(Yval));
+
+Ytrain_hat = double(string(Ytrain_predicted));
+Yval_hat = double(string(Yval_predicted));
 
 %Visualise performance
-train_flag = false;
-nlos_performance.hard_classification_report(Y,Yhat, train_flag);
+train_title_info = ['TRAINING SET ', tour_train];
+val_title_info = ['VALIDATION SET ', tour_val];
+nlos_performance.hard_classification_report(Ytrain_base,Ytrain_hat, train_title_info);
+nlos_performance.hard_classification_report(Yval_base,Yval_hat, val_title_info);
 
 

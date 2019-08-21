@@ -17,6 +17,19 @@ classdef nlos_feature_extractor
             
         end
         
+        function [predictors_deep, response_deep] = extract_standard_features_deep_learning(datatable)
+            
+            %Base Predictors and response
+            [predictors, response] = nlos_feature_extractor.get_basic_features(datatable);
+            
+            %Adapt datatypes
+            [predictors_deep, response_deep] = nlos_feature_extractor.prepare_deep_vars(predictors, response);
+  
+            %Provide user feedback
+            nlos_feature_extractor.print_extracted_features(predictors);           
+            
+        end
+        
         function [predictors, response] = extract_features_set2(datatable)
             
             %Base Predictors and response
@@ -40,15 +53,7 @@ classdef nlos_feature_extractor
             predictors = nlos_feature_extractor.get_LLI(predictors,datatable.carrierphase);
             
             %Adapt datatypes
-            nb_feat = width(predictors);
-            nb_samples = height(predictors);
-
-            pred_mat = predictors{:,:};
-            pred_mat = pred_mat';
-            predictors_deep = reshape(pred_mat,nb_feat,1,1,nb_samples);
-
-            resp_mat = response{:,:};
-            response_deep = categorical(resp_mat,[0 1], {'0', '1'});
+            [predictors_deep, response_deep] = nlos_feature_extractor.prepare_deep_vars(predictors,response);
             
             %Provide user feedback
             nlos_feature_extractor.print_extracted_features(predictors); 
@@ -97,12 +102,26 @@ classdef nlos_feature_extractor
             [Ytest,Ytest_wasMatrix] = tonndata(Ytest_mat,columnSamples,cellTime);
         end
         
+        function [predictors_deep, response_deep] = prepare_deep_vars(predictors,response)
+            nb_feat = width(predictors);
+            nb_samples = height(predictors);
+
+            pred_mat = predictors{:,:};
+            pred_mat = pred_mat';
+            predictors_deep = reshape(pred_mat,nb_feat,1,1,nb_samples);
+
+            resp_mat = response{:,:};
+            response_deep = categorical(resp_mat,[0 1], {'0', '1'});     
+            
+        end
+        
     end
     
     methods(Static, Access = private)
         function [predictors, response] = get_basic_features(datatable)
             
-            predictorNames = {'pseudorange', 'doppler', 'cnr', 'el', 'third_ord_diff', 'innovations'};
+            %predictorNames = {'pseudorange', 'doppler', 'cnr', 'el', 'third_ord_diff', 'innovations'};
+            predictorNames = {'cnr', 'innovations'};
             responseName = {'los'};
             
             predictors = datatable(:, predictorNames);
