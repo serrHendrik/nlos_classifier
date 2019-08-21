@@ -18,6 +18,7 @@ classdef nlos_datahandler
         GPS_flag
         GAL_flag
         GLO_flag
+        constellation_info
     end
     properties(Dependent)
         full_filename_FEdata
@@ -282,6 +283,12 @@ classdef nlos_datahandler
             %load PNT2data
             obj.PNT2data = load(obj.full_filename_PNT2data);
             obj.PNT2data = obj.PNT2data.PNT2data;
+            obj.constellation_info.G.sv_sys = 'G';
+            obj.constellation_info.E.sv_sys = 'E';
+            obj.constellation_info.R.sv_sys = 'R';
+            obj.constellation_info.G.allSv = obj.PNT2data.G.allSv;
+            obj.constellation_info.E.allSv = obj.PNT2data.E.allSv;
+            obj.constellation_info.R.allSv = obj.PNT2data.R.allSv;
             
             %sync FEdata and PNT2data to match available labels data
             obj = obj.sync_FE_PNT2();
