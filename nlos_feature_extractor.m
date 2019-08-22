@@ -175,19 +175,9 @@ classdef nlos_feature_extractor
             nb_feat = width(predictors) / lag;
             nb_samples = height(predictors);
             
-            predictors_cnn = zeros(nb_feat,lag,1,nb_samples);
-            
-            for i = 1:nb_samples
-                %1D to 2D with 1 feature per row (e.g. pseudorange)
-                %Then columns represent the lag
-                sample_new = reshape(predictors{i,:},lag,[])';
-                predictors_cnn(:,:,1,i) = sample_new;
-                
-                if mod(i,10000) == 0
-                    fprintf('Extracting CNN Predictors: %.2f%% complete.\n',i/nb_samples * 100);
-                end
-                
-            end
+            predictors_cnn = transpose(predictors{:,:});
+            predictors_cnn = reshape(predictors_cnn,lag,nb_feat,1,nb_samples);
+            predictors_cnn = permute(predictors_cnn, [2 1 3 4]);
             
             resp_mat = response{:,:};
             response_cnn = categorical(resp_mat,[0 1], {'0', '1'}); 

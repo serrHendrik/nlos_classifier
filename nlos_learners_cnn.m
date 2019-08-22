@@ -63,6 +63,43 @@ end
 [Xtrain, Ytrain] = nlos_feature_extractor.extract_standard_features_cnn(Dtrain_, base_features, lag);
 [Xval, Yval] = nlos_feature_extractor.extract_standard_features_cnn(Dval_, base_features, lag);
 
+%%
+% Learner
 
+nb_feat = size(Xtrain,1);
+
+weight_NLOS = dh_train.fraction_los;
+weight_LOS = 1 - weight_NLOS;
+classificationWeights = [weight_NLOS weight_LOS];
+
+layers = [
+    imageInputLayer([nb_feat lag 1],"Name","InputLayer")
+    
+    fullyConnectedLayer(10)
+    %batchNormalizationLayer
+    reluLayer
+    
+    fullyConnectedLayer(10)
+    %batchNormalizationLayer
+    reluLayer
+    
+    fullyConnectedLayer(2)
+    %batchNormalizationLayer("Name", "batchNorm2")
+    %reluLayer("Name","relu2")
+    
+    softmaxLayer
+    WeightedClassificationLayer(classificationWeights)];
+
+options = trainingOptions('adam', ...
+    'InitialLearnRate',0.001, ...
+    'MaxEpochs',4, ...
+    'Shuffle','every-epoch', ...
+    'ValidationData',{Xval,Yval}, ...
+    'ValidationFrequency',500, ...
+    'Verbose',false, ...
+    'Plots','training-progress', ...
+    'ExecutionEnvironment', 'gpu');
+
+net = trainNetwork(Xtrain,Ytrain,layers,options);
 
 
