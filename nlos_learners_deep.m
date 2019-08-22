@@ -3,7 +3,7 @@
 
 %Select constellations
 GPS_flag = true;
-GAL_flag = false; 
+GAL_flag = true; 
 GLO_flag = false;
 
 %Select TRAINING tour
@@ -19,7 +19,7 @@ tour_val = 'AMS_02';
 %tour_val = 'ROT_02';
 
 %Normalize numeric predictors?
-normalize_flag = true;
+normalize_flag = false;
 
 %Create TRAINING and VALIDATION datahandler
 dh_train = nlos_datahandler(tour_train, GPS_flag, GAL_flag, GLO_flag, normalize_flag);
@@ -37,11 +37,26 @@ dh_train.print_info_per_const(Dtrain);
 dh_val.print_info_per_const(Dval);
 
 %%
+%Scaler
+scale_flag = true;
+
+if scale_flag
+    scalable_vars = Dtrain.Properties.VariableNames(4:13);
+    scaler = nlos_scaler_minmax(Dtrain,scalable_vars);
+    
+    Dtrain_ = scaler.scale(Dtrain);
+    Dval_ = scaler.scale(Dval);
+else
+    Dtrain_ = Dtrain;
+    Dval_ = Dval;    
+end
+
+%%
 %Feature Engineering
 
 %Standard features
-[Xtrain, Ytrain] = nlos_feature_extractor.extract_standard_features_deep_learning(Dtrain);
-[Xval, Yval] = nlos_feature_extractor.extract_standard_features_deep_learning(Dval);
+[Xtrain, Ytrain] = nlos_feature_extractor.extract_standard_features_deep_learning(Dtrain_);
+[Xval, Yval] = nlos_feature_extractor.extract_standard_features_deep_learning(Dval_);
 
 %Feature set 2
 %[Xtrain, Ytrain] = nlos_feature_extractor.extract_features_set2_deep_learning(Dtrain);
@@ -49,6 +64,7 @@ dh_val.print_info_per_const(Dval);
 
 %Feature set 3
 %[predictors, response] = nlos_feature_extractor.extract_features_set3(dataset);
+
 
 %%
 % Learner

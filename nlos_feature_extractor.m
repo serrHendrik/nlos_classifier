@@ -30,6 +30,25 @@ classdef nlos_feature_extractor
             
         end
         
+        function [X_cnn, Y_cnn] = extract_standard_features_cnn(datatable, base_features, lag)
+            
+            %Predictors
+            X_features = nlos_feature_extractor.get_X_features_cnn(base_features, lag);
+            X = datatable(:, X_features);
+            
+            %Response
+            Y_feature = {['los_',num2str(lag)]};
+            Y = datatable(:, Y_feature);
+            
+            %adapt
+            [X_cnn, Y_cnn] = nlos_feature_extractor.prepare_cnn_vars(X, Y, lag);
+            
+            %User feedback
+            fprintf('\nCNN Features extraction done.\n');
+            
+            
+        end
+        
         function [predictors, response] = extract_features_set2(datatable)
             
             %Base Predictors and response
@@ -77,46 +96,6 @@ classdef nlos_feature_extractor
             nlos_feature_extractor.print_extracted_features(predictors);
             
         end
-        
-        function [predictors_CNN, response_CNN] = extract_features_CNN(datatable, constellation_info, lag)
-            %TODO
-            %Create row with time delay, delete rows with time larger than lag
-            %save load (perhaps create new datahandler?)
-            
-            
-            %init feature table
-            %base_features = {'common_time', 'pseudorange', 'carrierphase', 'cnr', 'doppler', 'az', 'el', 'innovations'};
-            base_features = {'pseudorange', 'cnr', 'doppler', 'el', 'innovations'};
-            [sv_feature_table_template, X_features, Y_feature] = nlos_feature_extractor.init_cnn_feature_table(lag, base_features);
-            feature_table = sv_feature_table_template;
-            
-            for c = 'GER'
-                ids = constellation_info.(c).allSv;
-                for i = 1:length(ids)
-                    sv_id = ids(i);
-                    %sv table
-                    mask_part1 = (cell2mat(datatable.sv_sys) == c);
-                    mask_part2 = (datatable.sv_id == sv_id);
-                    sv_table_mask = mask_part1 & mask_part2;
-                    sv_base_table = datatable(sv_table_mask, :);
-                    
-                    %extract new features
-                    sv_feature_table = nlos_feature_extractor.extract_features_CNN_for_sv(c, sv_id, sv_base_table, lag, base_features, sv_feature_table_template);
-                    
-                    %expand feature table
-                    feature_table = [feature_table; sv_feature_table];
-                    
-                end
-            end
-            
-            %Select predictors and response
-            predictors_CNN = feature_table(:,X_features);
-            response_CNN = feature_table(:,Y_feature);
-            
-            
-        end
-        
-        
         
         function [Xtrain, Ytrain, Xtest, Ytest] = prepare_holdout_nn(datatable, X_cols, Y_col, holdout_p)
            
@@ -192,8 +171,30 @@ classdef nlos_feature_extractor
             
         end
         
-        function [feature_table, X_features, Y_feature] = init_cnn_feature_table(lag, base_features)
+        function [predictors_cnn, response_cnn] = prepare_cnn_vars(predictors, response, lag)
+            nb_feat = width(predictors) / lag;
+            nb_samples = height(predictors);
             
+            predictors_cnn = zeros(nb_feat,lag,1,nb_samples);
+            
+            for i = 1:nb_samples
+                %1D to 2D with 1 feature per row (e.g. pseudorange)
+                %Then columns represent the lag
+                sample_new = reshape(predictors{i,:},lag,[])';
+                predictors_cnn(:,:,1,i) = sample_new;
+                
+                if mod(i,10000) == 0
+                    fprintf('Extracting CNN Predictors: %.2f%% complete.\n',i/nb_samples * 100);
+                end
+                
+            end
+            
+            resp_mat = response{:,:};
+            response_cnn = categorical(resp_mat,[0 1], {'0', '1'}); 
+            
+        end
+        
+        function X_features = get_X_features_cnn(base_features, lag)
             N = length(base_features);
             X_features = cell(1,N*lag);
             
@@ -202,39 +203,7 @@ classdef nlos_feature_extractor
                for i = 1:lag
                    X_features{i + (j-1)*lag} = [base_features{j}, '_', num2str(i)];
                end
-            end
-            
-            %Add sat_sys and sat_id and label
-            Y_feature = {['los_', num2str(lag)]};
-            all_features = [{'sat_sys'}, {'sat_id'}, X_features, Y_feature];
-            
-            %init table
-            table_width = length(all_features);
-            feature_table = cell2table(cell(0,table_width),'VariableNames',all_features);
-            
-            
-        end
-        
-        function sv_feature_table = extract_features_CNN_for_sv(sv_sys, sv_id, sv_table, lag, base_features, sv_feature_table_template)
-            
-            sv_feature_table = sv_feature_table_template;
-            N = height(sv_table);
-            
-            if (N >= lag)
-                
-                for i = 1:N-lag+1
-                    
-                    row_mat = sv_table{i:i+lag-1, base_features};
-                    row_cell = num2cell(transpose(row_mat(:)));
-                    label = sv_table(i+lag-1,{'los'});
-                    row = [{sv_sys}, {sv_id}, row_cell, {label}];
-                    
-                    sv_feature_table = [sv_feature_table; row];
-                    
-                end
-                
-            end
-            
+            end 
             
         end
         
