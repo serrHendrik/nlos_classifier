@@ -29,7 +29,16 @@ dh_val = nlos_datahandler(tour_val, GPS_flag, GAL_flag, GLO_flag, normalize_flag
 Dtrain = dh_train.data;
 Dval = dh_val.data;
 
-%Sampling
+%Sampling: timewise (keep 1 every X seconds)
+[Dtrain,~] = dh_train.sample_data_timewise(dh_train.data, 5);
+[Dval,~] = dh_train.sample_data_timewise(dh_val.data, 5);
+%Sampling: balance classes
+[Dtrain,~] = dh_train.sample_data_balance_classes(Dtrain);
+[Dval,~] = dh_train.sample_data_balance_classes(Dval);
+%Sampling: classwise (maintain balance while downsampling)
+%[Dtrain,~] = dh_train.sample_data_classwise(Dtrain, 0.5);
+%[Dval,~] = dh_train.sample_data_classwise(Dval, 0.5);
+
 %[Dtrain,~] = dh_train.sample_data_classwise(dh_train.data, 0.75);
 %[Dval,~] = dh_train.sample_data_classwise(dh_val.data, 0.95);
 
@@ -100,8 +109,8 @@ layers = [
     reluLayer
     
     softmaxLayer
-    %classificationLayer
-    WeightedClassificationLayer(classificationWeights)
+    classificationLayer
+    %WeightedClassificationLayer(classificationWeights)
 ];
 
 options = trainingOptions('adam', ...

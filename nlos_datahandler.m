@@ -199,6 +199,24 @@ classdef nlos_datahandler
 
         end
         
+        function [data_subset,data_rest] = sample_data_balance_classes(obj, data)
+            nb_los = sum(data.los);
+            nb_nlos = length(data.los) - nb_los;
+
+            %nlos indices
+            subset_mask = data.los == 0;
+            %los indices
+            los_ind = datasample(find(data.los),nb_nlos,'Replace', false);
+            
+            %mask
+            subset_mask(los_ind) = true;
+            
+            %subset
+            data_subset = data(subset_mask,:);
+            data_rest = data(~subset_mask,:);
+            
+        end
+        
         function [data_subset,data_rest] = sample_data_classwise(obj, data, holdout_frac)
             c = cvpartition(height(data),'Holdout', holdout_frac);
             
