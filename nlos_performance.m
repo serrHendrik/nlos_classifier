@@ -28,11 +28,6 @@ classdef nlos_performance
         end
 
         function hard_classification_report(Y,Yhat, plot_title)
-            %Y = cell2mat(Y_cell);
-            %Yhat_ = cell2mat(Yhat_cell);plot_title
-           
-            %Soft to hard prediction
-            %Yhat = nlos_performance.soft_to_hard(Yhat_);
             
             %get basic stats
             [True_LOS, False_LOS, True_NLOS, False_NLOS] = nlos_performance.get_base_statistics(Y, Yhat);
@@ -61,6 +56,84 @@ classdef nlos_performance
             plotconfusion(Y_cat,Yhat_cat, title_modified);
             
         end
+        
+          
+         function hard_classification_report2(Y,Yhat, plot_title)
+         %This variant of the classification report cuts the sets in parts
+         %and provides expected values and variances on performance metrics
+            split = 10;
+            %splitpoints = linspace(1, length(Y), split+1);
+            c = cvpartition(length(Y),'KFold', split);
+            
+            accuracy_mat = zeros(1,split);
+            precision_LOS_mat = zeros(1,split);
+            precision_NLOS_mat = zeros(1,split);
+            recall_LOS_mat = zeros(1,split);
+            recall_NLOS_mat = zeros(1,split);
+            F1_LOS_mat = zeros(1,split);
+            F1_NLOS_mat = zeros(1,split);
+            
+            
+            for i = 1:split
+                
+                Y_part = Y(c.test(i));
+                Yhat_part = Yhat(c.test(i));
+                
+                %get basic stats
+                [True_LOS, False_LOS, True_NLOS, False_NLOS] = nlos_performance.get_base_statistics(Y_part, Yhat_part);
+
+                %Accuracy
+                accuracy_mat(i) = nlos_performance.get_accuracy(True_LOS, False_LOS, True_NLOS, False_NLOS);
+
+                %Precision
+                [precision_LOS_mat(i), precision_NLOS_mat(i)] = nlos_performance.get_precision(True_LOS, False_LOS, True_NLOS, False_NLOS);
+
+                %Recall
+                [recall_LOS_mat(i), recall_NLOS_mat(i)] = nlos_performance.get_recall(True_LOS, False_LOS, True_NLOS, False_NLOS);
+
+                %F1
+                [F1_LOS_mat(i), F1_NLOS_mat(i)] = nlos_performance.get_f1(precision_LOS_mat(i), precision_NLOS_mat(i), recall_LOS_mat(i), recall_NLOS_mat(i));
+            
+            end
+            
+            %Calculate expected values and variances
+            accuracy_E = mean(accuracy_mat);
+            accuracy_std = std(accuracy_mat);
+            precision_LOS_E = mean(precision_LOS_mat);
+            precision_LOS_var = std(precision_LOS_mat);
+            precision_NLOS_E = mean(precision_NLOS_mat);
+            precision_NLOS_var = std(precision_NLOS_mat);
+            recall_LOS_E = mean(recall_LOS_mat);
+            recall_LOS_var = std(recall_LOS_mat);
+            recall_NLOS_E = mean(recall_NLOS_mat);
+            recall_NLOS_var = std(recall_NLOS_mat);
+            F1_LOS_E = mean(F1_LOS_mat); 
+            F1_LOS_var = std(F1_LOS_mat);
+            F1_NLOS_E = mean(F1_NLOS_mat);
+            F1_NLOS_var = var(F1_NLOS_mat);
+            
+            output_mat = [precision_LOS_E, precision_LOS_var, recall_LOS_E, recall_LOS_var, F1_LOS_E, F1_LOS_var; ...
+                          precision_NLOS_E, precision_NLOS_var, recall_NLOS_E, recall_NLOS_var, F1_NLOS_E, F1_NLOS_var];
+            
+            row_names = {'LOS', 'NLOS'};
+            var_names = {'E_Precision', 'STD_Precision','E_Recall', 'STD_Recall','E_F1', 'STD_F1'};
+            output_table = array2table(output_mat, 'RowNames', row_names, 'VariableNames', var_names);
+                      
+            %print results
+            fprintf('Results for %s with partition size %d.\n',plot_title, split)
+            output_table
+            %nlos_performance.print_hard_classification_report(precision_LOS, precision_NLOS, recall_LOS, recall_NLOS, F1_LOS, F1_NLOS, accuracy);
+            
+            %Show confusion table
+            ind_ = strfind(plot_title, '_');
+            title_modified = [plot_title(1:ind_-1) '\' plot_title(ind_:end)];
+            Y_cat = categorical(Y, [0 1], {'NLOS', 'LOS'});
+            Yhat_cat = categorical(Yhat, [0 1], {'NLOS', 'LOS'});
+            figure;
+            plotconfusion(Y_cat,Yhat_cat, title_modified);
+            
+        end       
+        
         
         function nlos_roc(Y,Yhat_scores, plot_title)
             

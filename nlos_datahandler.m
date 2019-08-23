@@ -181,7 +181,7 @@ classdef nlos_datahandler
             fprintf('\n\n')
         end
         
-        function [data_subset,data_rest] = sample_data(obj, data, mod_b)
+        function [data_subset,data_rest] = sample_data_timewise(obj, data, mod_b)
             
             fprintf('Sampling data... ')
             
@@ -196,7 +196,14 @@ classdef nlos_datahandler
             frac_samp = size_samp / size_orig;
             fprintf('done!\n')
             fprintf('Original data size: %d (100%%), sample set size: %d (%.2f%%)\n',size_orig,size_samp,frac_samp*100);
+
+        end
+        
+        function [data_subset,data_rest] = sample_data_classwise(obj, data, holdout_frac)
+            c = cvpartition(height(data),'Holdout', holdout_frac);
             
+            data_subset = data(c.training,:);
+            data_rest = data(c.test,:);
             
             
         end

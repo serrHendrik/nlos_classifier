@@ -127,8 +127,8 @@ classdef nlos_feature_extractor
     methods(Static, Access = private)
         function [predictors, response] = get_basic_features(datatable)
             
-            %predictorNames = {'pseudorange', 'doppler', 'cnr', 'el', 'third_ord_diff', 'innovations'};
-            predictorNames = {'cnr', 'innovations'};
+            predictorNames = {'pseudorange', 'doppler', 'cnr', 'el', 'third_ord_diff', 'innovations'};
+            %predictorNames = {'cnr', 'el', 'innovations'};
             responseName = {'los'};
             
             predictors = datatable(:, predictorNames);
@@ -177,6 +177,9 @@ classdef nlos_feature_extractor
             
             predictors_cnn = transpose(predictors{:,:});
             predictors_cnn = reshape(predictors_cnn,lag,nb_feat,1,nb_samples);
+            %Features as channels
+            %predictors_cnn = permute(predictors_cnn, [3 1 2 4]);
+            %Features as rows
             predictors_cnn = permute(predictors_cnn, [2 1 3 4]);
             
             resp_mat = response{:,:};

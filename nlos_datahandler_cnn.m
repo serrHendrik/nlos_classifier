@@ -110,6 +110,15 @@ classdef nlos_datahandler_cnn
             
         end
         
+        function [data_subset,data_rest] = sample_data_classwise(obj, data, holdout_frac)
+            c = cvpartition(height(data),'Holdout', holdout_frac);
+            
+            data_subset = data(c.training,:);
+            data_rest = data(c.test,:);
+            
+            
+        end
+        
         function print_info_per_const(obj, datatable)
             mask_GPS = cell2mat(datatable.sv_sys) == 'G';
             mask_GAL = cell2mat(datatable.sv_sys) == 'E';
