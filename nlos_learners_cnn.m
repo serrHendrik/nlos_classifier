@@ -7,15 +7,15 @@ GAL_flag = true;
 GLO_flag = false;
 
 %Select TRAINING tour
-%tour_train = 'AMS_01';
+tour_train = 'AMS_01';
 %tour_train = 'AMS_02';
-tour_train = 'ROT_01';
+%tour_train = 'ROT_01';
 %tour_train = 'ROT_02';
 
 %Select VALIDATION tour
-tour_val = 'AMS_01';
+%tour_val = 'AMS_01';
 %tour_val = 'AMS_02';
-%tour_val = 'ROT_01';
+tour_val = 'ROT_01';
 %tour_val = 'ROT_02';
 
 %LAG
@@ -27,12 +27,25 @@ dh_val = nlos_datahandler_cnn(tour_val, GPS_flag, GAL_flag, GLO_flag, lag);
 
 
 %Extract final dataset from datahandler
-Dtrain = dh_train.data;
-Dval = dh_val.data;
+%Dtrain = dh_train.data;
+%Dval = dh_val.data;
 
 %Sampling
-%[Dtrain,~] = dh_train.sample_data_classwise(dh_train.data, 0.9);
-%[Dval,~] = dh_train.sample_data_classwise(dh_val.data, 0.95);
+%Sampling: timewise (keep 1 every X seconds)
+%[Dtrain,~] = dh_train.sample_data_timewise(dh_train.data, 5, 0);
+%[Dval,~] = dh_val.sample_data_timewise(dh_val.data, 5, 2);
+%Sampling: balance classes
+%[Dtrain,~] = dh_train.sample_data_balance_classes(Dtrain);
+%[Dval,~] = dh_val.sample_data_balance_classes(Dval);
+%Sampling: classwise (maintain balance while downsampling)
+%[Dtrain,~] = dh_train.sample_data_classwise(Dtrain, 0.5);
+%[Dval,~] = dh_val.sample_data_classwise(Dval, 0.5);
+
+[data,~] = dh_train.sample_data_balance_classes(dh_train.data);
+c = cvpartition(height(data),'KFold', 2);
+
+Dtrain = data(c.test(1),:);
+Dval = data(c.test(2),:);
 
 %Info
 dh_train.print_info_per_const(Dtrain);
@@ -43,7 +56,7 @@ dh_val.print_info_per_const(Dval);
 scale_flag = true;
 
 %base_features = {'pseudorange', 'carrierphase', 'cnr', 'doppler', 'az', 'el', 'innovations'};
-base_features = {'cnr', 'el'};
+base_features = {'pseudorange', 'carrierphase', 'cnr', 'el','innovations'};
 
 if scale_flag
     %first = 2+lag+1;  %remove sv_sys, sv_id, common_time_X
@@ -79,18 +92,19 @@ classificationWeights = [weight_NLOS weight_LOS];
 layers = [
     imageInputLayer([nb_feat lag 1],"Name","InputLayer")
     
-    convolution2dLayer([nb_feat 3], 128, 'Stride', [1 1], 'Padding', 'same', "Name", "Conv1")
+    convolution2dLayer([1 2], 256, 'Stride', [1 1], 'Padding', 'same', "Name", "Conv1")
+    %convolution2dLayer([nb_feat 1], 128, 'Stride', [1 1], 'Padding', 'same', "Name", "Conv1")
     reluLayer
     %dropoutLayer(0.2)
-    convolution2dLayer([2 3], 64, 'Stride', [1 1], 'Padding', 'same', "Name", "Conv2")
+    convolution2dLayer([2 1], 64, 'Stride', [1 1], 'Padding', 'same', "Name", "Conv2")
     reluLayer
     %dropoutLayer(0.2)
     
-    maxPooling2dLayer([2 2])
+    %maxPooling2dLayer([2 2])
     
     %convolution2dLayer([2 3], 64, 'Stride', [1 1], 'Padding', 'same', "Name", "Conv3")
     %reluLayer
-    fullyConnectedLayer(18)
+    fullyConnectedLayer(32)
     reluLayer
     
     fullyConnectedLayer(2)

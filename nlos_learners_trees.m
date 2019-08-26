@@ -14,27 +14,43 @@ tour_train = 'AMS_01';
 
 %Select VALIDATION tour
 %tour_val = 'AMS_01';
-tour_val = 'AMS_02';
-%tour_val = 'ROT_01';
+%tour_val = 'AMS_02';
+tour_val = 'ROT_01';
 %tour_val = 'ROT_02';
 
 %Normalize numeric predictors?
-normalize_flag = true;
+normalize_flag = false;
 
 %Create TRAINING and VALIDATION datahandler
 dh_train = nlos_datahandler(tour_train, GPS_flag, GAL_flag, GLO_flag, normalize_flag);
 dh_val = nlos_datahandler(tour_val, GPS_flag, GAL_flag, GLO_flag, normalize_flag);
 
-%Sampling
-%Not required for basic learners
-
 %Extract final dataset from datahandler
-Dtrain = dh_train.data;
-Dval = dh_val.data;
+%Dtrain = dh_train.data;
+%Dval = dh_val.data;
+
+%Sampling: balance classes
+[Dtrain,~] = dh_train.sample_data_balance_classes(dh_train.data);
+[Dval,~] = dh_train.sample_data_balance_classes(dh_val.data);
 
 %Info
 dh_train.print_info_per_const(Dtrain);
 dh_val.print_info_per_const(Dval);
+
+%%
+%Scaler
+scale_flag = true;
+
+if scale_flag
+    scalable_vars = Dtrain.Properties.VariableNames(4:13);
+    scaler = nlos_scaler_minmax(Dtrain,scalable_vars);
+    
+    Dtrain_ = scaler.scale(Dtrain);
+    Dval_ = scaler.scale(Dval);
+else
+    Dtrain_ = Dtrain;
+    Dval_ = Dval;    
+end
 
 %%
 %Feature Engineering

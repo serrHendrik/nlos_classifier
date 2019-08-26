@@ -7,13 +7,13 @@ GAL_flag = true;
 GLO_flag = false;
 
 %Select TRAINING tour
-%tour_train = 'AMS_01';
+tour_train = 'AMS_01';
 %tour_train = 'AMS_02';
-tour_train = 'ROT_01';
+%tour_train = 'ROT_01';
 %tour_train = 'ROT_02';
 
 %Select VALIDATION tour
-tour_val = 'AMS_01';
+%tour_val = 'AMS_01';
 %tour_val = 'AMS_02';
 %tour_val = 'ROT_01';
 %tour_val = 'ROT_02';
@@ -23,24 +23,33 @@ normalize_flag = false;
 
 %Create TRAINING and VALIDATION datahandler
 dh_train = nlos_datahandler(tour_train, GPS_flag, GAL_flag, GLO_flag, normalize_flag);
-dh_val = nlos_datahandler(tour_val, GPS_flag, GAL_flag, GLO_flag, normalize_flag);
+%dh_val = nlos_datahandler(tour_val, GPS_flag, GAL_flag, GLO_flag, normalize_flag);
 
 %Extract final dataset from datahandler
-Dtrain = dh_train.data;
-Dval = dh_val.data;
+%Dtrain = dh_train.data;
+%Dval = dh_val.data;
 
 %Sampling: timewise (keep 1 every X seconds)
-[Dtrain,~] = dh_train.sample_data_timewise(dh_train.data, 5);
-[Dval,~] = dh_train.sample_data_timewise(dh_val.data, 5);
+%[Dtrain,~] = dh_train.sample_data_timewise(dh_train.data, 5);
+%[Dval,~] = dh_train.sample_data_timewise(dh_val.data, 5);
 %Sampling: balance classes
-[Dtrain,~] = dh_train.sample_data_balance_classes(Dtrain);
-[Dval,~] = dh_train.sample_data_balance_classes(Dval);
+%[Dtrain,~] = dh_train.sample_data_balance_classes(Dtrain);
+%[Dval,~] = dh_train.sample_data_balance_classes(Dval);
 %Sampling: classwise (maintain balance while downsampling)
 %[Dtrain,~] = dh_train.sample_data_classwise(Dtrain, 0.5);
 %[Dval,~] = dh_train.sample_data_classwise(Dval, 0.5);
 
-%[Dtrain,~] = dh_train.sample_data_classwise(dh_train.data, 0.75);
-%[Dval,~] = dh_train.sample_data_classwise(dh_val.data, 0.95);
+
+
+
+ind_half = round(height(dh_train.data)/2);
+Dtrain = dh_train.data(ind_half:end,:);
+
+[data,~] = dh_train.sample_data_balance_classes(Dtrain);
+c = cvpartition(height(data),'KFold', 8);
+Dtrain = data(c.test(1),:);
+Dval = data(c.test(2),:);
+
 
 %Info
 dh_train.print_info_per_const(Dtrain);
@@ -114,7 +123,7 @@ layers = [
 ];
 
 options = trainingOptions('adam', ...
-    'InitialLearnRate',0.001, ...
+    'InitialLearnRate',0.0001, ...
     'MaxEpochs',10000, ...
     'Shuffle','every-epoch', ...
     'ValidationData',{Xval,Yval}, ...

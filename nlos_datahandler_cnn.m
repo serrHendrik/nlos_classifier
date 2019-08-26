@@ -109,6 +109,43 @@ classdef nlos_datahandler_cnn
             end 
             
         end
+
+        function [data_subset,data_rest] = sample_data_timewise(obj, data, mod_b, mod_rest)
+            
+            fprintf('Sampling data... ')
+            
+            mask_ss = mod(data.common_time_1,mod_b) == mod_rest;
+            mask_inv = ~mask_ss;
+            
+            data_subset = data(mask_ss,:);
+            data_rest = data(mask_inv,:);
+            
+            size_orig = length(mask_ss);
+            size_samp = sum(mask_ss);
+            frac_samp = size_samp / size_orig;
+            fprintf('done!\n')
+            fprintf('Original data size: %d (100%%), sample set size: %d (%.2f%%)\n',size_orig,size_samp,frac_samp*100);
+
+        end
+        
+        function [data_subset,data_rest] = sample_data_balance_classes(obj, data)
+            nb_los = sum(data.(obj.label_name));
+            nb_nlos = height(data) - nb_los;
+
+            %nlos indices
+            subset_mask = data.(obj.label_name) == 0;
+            %los indices
+            los_ind = datasample(find(data.(obj.label_name)),nb_nlos,'Replace', false);
+            
+            %mask
+            subset_mask(los_ind) = true;
+            
+            %subset
+            data_subset = data(subset_mask,:);
+            data_rest = data(~subset_mask,:);
+            
+        end
+        
         
         function [data_subset,data_rest] = sample_data_classwise(obj, data, holdout_frac)
             c = cvpartition(height(data),'Holdout', holdout_frac);
