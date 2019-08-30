@@ -128,7 +128,7 @@ classdef nlos_feature_extractor
         function [predictors, response] = get_basic_features(datatable)
             
             %predictorNames = {'pseudorange', 'doppler', 'cnr', 'el', 'third_ord_diff', 'innovations'};
-            predictorNames = {'pseudorange', 'cnr', 'el', 'third_ord_diff', 'innovations'};
+            predictorNames = {'cnr', 'el', 'innovations'};
             responseName = {'los'};
             
             predictors = datatable(:, predictorNames);

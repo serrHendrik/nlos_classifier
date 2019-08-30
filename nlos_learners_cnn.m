@@ -14,8 +14,8 @@ tour_train = 'AMS_01';
 
 %Select VALIDATION tour
 %tour_val = 'AMS_01';
-%tour_val = 'AMS_02';
-tour_val = 'ROT_01';
+tour_val = 'AMS_02';
+%tour_val = 'ROT_01';
 %tour_val = 'ROT_02';
 
 %LAG
@@ -27,8 +27,8 @@ dh_val = nlos_datahandler_cnn(tour_val, GPS_flag, GAL_flag, GLO_flag, lag);
 
 
 %Extract final dataset from datahandler
-%Dtrain = dh_train.data;
-%Dval = dh_val.data;
+Dtrain = dh_train.data;
+Dval = dh_val.data;
 
 %Sampling
 %Sampling: timewise (keep 1 every X seconds)
@@ -37,15 +37,21 @@ dh_val = nlos_datahandler_cnn(tour_val, GPS_flag, GAL_flag, GLO_flag, lag);
 %Sampling: balance classes
 %[Dtrain,~] = dh_train.sample_data_balance_classes(Dtrain);
 %[Dval,~] = dh_val.sample_data_balance_classes(Dval);
+
 %Sampling: classwise (maintain balance while downsampling)
-%[Dtrain,~] = dh_train.sample_data_classwise(Dtrain, 0.5);
-%[Dval,~] = dh_val.sample_data_classwise(Dval, 0.5);
+[Dtrain,~] = dh_train.sample_data_classwise(Dtrain, 0.90);
+[Dval,~] = dh_val.sample_data_classwise(Dval, 0.90);
 
-[data,~] = dh_train.sample_data_balance_classes(dh_train.data);
-c = cvpartition(height(data),'KFold', 2);
 
-Dtrain = data(c.test(1),:);
-Dval = data(c.test(2),:);
+
+
+% [data,~] = dh_train.sample_data_balance_classes(dh_train.data);
+% c = cvpartition(height(data),'KFold', 2);
+% 
+% Dtrain = data(c.test(1),:);
+% Dval = data(c.test(2),:);
+
+
 
 %Info
 dh_train.print_info_per_const(Dtrain);
@@ -56,7 +62,7 @@ dh_val.print_info_per_const(Dval);
 scale_flag = true;
 
 %base_features = {'pseudorange', 'carrierphase', 'cnr', 'doppler', 'az', 'el', 'innovations'};
-base_features = {'pseudorange', 'carrierphase', 'cnr', 'el','innovations'};
+base_features = {'pseudorange', 'cnr', 'el', 'innovations'};
 
 if scale_flag
     %first = 2+lag+1;  %remove sv_sys, sv_id, common_time_X
@@ -92,20 +98,25 @@ classificationWeights = [weight_NLOS weight_LOS];
 layers = [
     imageInputLayer([nb_feat lag 1],"Name","InputLayer")
     
-    convolution2dLayer([1 2], 256, 'Stride', [1 1], 'Padding', 'same', "Name", "Conv1")
+    convolution2dLayer([1 2], 256, 'Stride', [1 1], 'Padding', 'same')
     %convolution2dLayer([nb_feat 1], 128, 'Stride', [1 1], 'Padding', 'same', "Name", "Conv1")
     reluLayer
     %dropoutLayer(0.2)
-    convolution2dLayer([2 1], 64, 'Stride', [1 1], 'Padding', 'same', "Name", "Conv2")
+    convolution2dLayer([2 1], 112, 'Stride', [1 1])
     reluLayer
     %dropoutLayer(0.2)
     
     %maxPooling2dLayer([2 2])
+    convolution2dLayer([(nb_feat-1) 1], 112, 'Stride', [1 1], 'Padding', 'same')
+    reluLayer
+    
+    convolution2dLayer([1 2], 56, 'Stride', [1 1], 'Padding', 'same')
+    reluLayer
     
     %convolution2dLayer([2 3], 64, 'Stride', [1 1], 'Padding', 'same', "Name", "Conv3")
     %reluLayer
-    fullyConnectedLayer(32)
-    reluLayer
+    %fullyConnectedLayer(32)
+    %reluLayer
     
     fullyConnectedLayer(2)
     reluLayer
@@ -120,7 +131,7 @@ options = trainingOptions('adam', ...
     'MaxEpochs',10000, ...
     'Shuffle','every-epoch', ...
     'ValidationData',{Xval,Yval}, ...
-    'ValidationFrequency',500, ...
+    'ValidationFrequency',250, ...
     'Verbose',false, ...
     'Plots','training-progress', ...
     'ExecutionEnvironment', 'gpu');
@@ -129,6 +140,11 @@ net = trainNetwork(Xtrain,Ytrain,layers,options);
 
 
 %% Evaluation
+%Reset validation to entire validation set
+Dval = dh_val.data;
+Dval_ = scaler.scale(Dval);
+[Xval, Yval] = nlos_feature_extractor.extract_standard_features_cnn(Dval_, base_features, lag);
+
 
 [Ytrain_hat,Ytrain_scores]  = classify(net,Xtrain);
 [Yval_hat, Yval_scores] = classify(net,Xval);

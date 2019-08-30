@@ -12,6 +12,8 @@ classdef nlos_datahandler
         PNT2data
         timestamp_first         %in seconds
         timestamp_last          %in seconds
+        timestamp_first_utc     %duration object HH:MM:ss
+        timeinterval_table      %intervals to extract from base table
     end
     properties
         data
@@ -49,8 +51,18 @@ classdef nlos_datahandler
                     obj = obj.init_ROT_02();
             end
             
+            %init datahandler -> construct base datatable
+            obj = obj.init_datahandler();
+            
             %Select appropriate constellations
             obj = obj.select_constellations();
+            
+            %Select desired time intervals (based on manual camera analysis)
+            obj = obj.select_timeintervals();
+            
+            %Filter data anomalies based on statistical analysis
+            %remove points with LOS label and innovation > 100
+            obj = obj.filter_innovations(100);
             
             %Normalize data per constellation if requested
             if normalize_flag
@@ -67,12 +79,14 @@ classdef nlos_datahandler
             obj.filename_FEdata = 'outputVars_EXP01_AMS_2018.mat';
             obj.filename_PNT2data = 'PNT2data.mat';
             obj.filename_output = 'AMS_01_datatable.csv';
+            obj.timestamp_first_utc = duration(0,0,0);
             
-            obj = obj.init_datahandler();
-            
-            %Filter data anomalies based on statistical analysis
-            %remove points with LOS label and innovation > 100
-            obj = obj.filter_innovations(100);
+            timeintervals = [...
+                duration(0,0,0), duration(0,0,0); ...
+                ];
+            obj.timeinterval_table = array2table(timeintervals, ...
+                'VariableNames', {'start','stop'});
+
         end
         
         %init function for AMS_02 dataset
@@ -82,12 +96,8 @@ classdef nlos_datahandler
             obj.filename_FEdata = 'outputVars_EXP02_AMS_2018.mat';
             obj.filename_PNT2data = 'PNT2data.mat';
             obj.filename_output = 'AMS_02_datatable.csv';
-            
-            obj = obj.init_datahandler();
-            
-            %Filter data anomalies based on statistical analysis
-            %remove points with LOS label and innovation > 100
-            obj = obj.filter_innovations(100);
+            obj.timestamp_first_utc = duration(0,0,0);
+
         end
         
         %init function for ROT_01 dataset
@@ -97,14 +107,39 @@ classdef nlos_datahandler
             obj.filename_FEdata = 'outputVars_EXP01_ROT_2018.mat';
             obj.filename_PNT2data = 'PNT2data.mat';
             obj.filename_output = 'ROT_01_datatable.csv';
+            obj.timestamp_first_utc = duration(8,15,0);
             
-            obj = obj.init_datahandler();
-            
-            %Filter data anomalies based on statistical analysis
-            %remove points with LOS label and innovation > 100
-            obj = obj.filter_innovations(100);
-            
-            
+            %Note: Currently only data available between 8:15 and 9:15,
+            %The camera footage is however three hours...
+            timeintervals = [...
+                duration(8,18,51), duration(8,19,07); ...   %16s
+                duration(8,23,44), duration(8,25,28); ...   %104s
+                duration(8,29,14), duration(8,29,28); ...   %14s
+                duration(8,30,11), duration(8,30,40); ...   %29s
+                duration(8,33,00), duration(8,33,14); ...   %14s
+                duration(8,35,13), duration(8,35,31); ...   %18s
+                duration(8,48,6), duration(8,48,9); ...     %3s
+                duration(8,43,48), duration(8,44,20); ...   %32s
+                duration(8,50,26), duration(8,53,40); ...   %194s
+                duration(8,54,04), duration(8,54,08); ...   %4s
+                duration(8,54,15), duration(8,54,24); ...   %9s
+                duration(8,55,9), duration(8,55,16); ...    %7s
+                duration(9,5,5), duration(9,5,18); ...      %13s
+                duration(9,5,59), duration(9,6,6); ...      %7s
+                duration(9,14,22), duration(9,15,25); ...   %63s     
+                duration(9,16,34), duration(9,16,43); ...   %9s
+                duration(9,17,14), duration(9,18,0); ...    %46s
+                duration(9,44,9), duration(9,44,45); ...    %36s
+                duration(9,58,21), duration(9,59,47); ...   %86s
+                duration(10,0,52), duration(10,1,16); ...   %24s
+                duration(10,55,55), duration(10,56,53); ... %58s
+                duration(10,57,22), duration(10,58,18); ... %56s
+                duration(10,59,15), duration(10,59,17); ... %2s
+                duration(11,11,14), duration(11,11,17); ... %3s -- Total = 847s = 14m7s    
+                ];
+
+            obj.timeinterval_table = array2table(timeintervals, ...
+                'VariableNames', {'start','stop'});
         end
         
         %init function for ROT_02 dataset
@@ -114,12 +149,8 @@ classdef nlos_datahandler
             obj.filename_FEdata = 'outputVars_EXP02_ROT_2018.mat';
             obj.filename_PNT2data = 'PNT2data.mat';
             obj.filename_output = 'ROT_02_datatable.csv';
+            obj.timestamp_first_utc = duration(0,0,0);
             
-            obj = obj.init_datahandler();   
-            
-            %Filter data anomalies based on statistical analysis, specific to this dataset
-            %remove points with LOS label and innovation > 100
-            obj = obj.filter_innovations(100);
         end
         
         
@@ -180,6 +211,34 @@ classdef nlos_datahandler
             end
             fprintf('\n\n')
         end
+        
+        function obj = select_timeintervals(obj)
+            
+            if obj.timestamp_first_utc ~= duration(0,0,0)
+                %select good common_time values
+                good_indices = [];
+                for i = 1:height(obj.timeinterval_table)
+                    start = seconds(obj.timeinterval_table.start(i) - obj.timestamp_first_utc);
+                    stop = seconds(obj.timeinterval_table.stop(i) - obj.timestamp_first_utc);
+                    new_ind = start:stop;
+                    good_indices = [good_indices new_ind];
+                end
+                
+                %generate mask
+                good_indices = good_indices';
+                common_time = obj.data.common_time - obj.timestamp_first;
+                time_mask = ismember(common_time,good_indices);
+                
+                obj.data = obj.data(time_mask,:);
+                
+                %reduce data to selected common_time values
+                %ind_table = table(good_indices', 'VariableNames', {'common_time'});
+                %obj.data = innerjoin(obj.data,ind_table,'Keys',{'common_time'});
+                
+            end
+            
+        end
+            
         
         function [data_subset,data_rest] = sample_data_timewise(obj, data, mod_b)
             
@@ -389,6 +448,8 @@ classdef nlos_datahandler
             
             %Adapt time
             obj.PNT2data.commonTime = obj.PNT2data.commonTime(mask_PNT2);
+            obj.PNT2data.rxTime = obj.PNT2data.rxTime(mask_PNT2);
+            obj.PNT2data.utcTime = obj.PNT2data.utcTime(mask_PNT2);
     
             for c = const
                %nb_sats = length(obj.PNT2data.(c).allSv);
@@ -464,11 +525,17 @@ classdef nlos_datahandler
             total_sats = size(GPS.allSv,1) + size(GAL.allSv,1) + size(GLO.allSv,1); 
             
             %time
-            time_steps = length(obj.FEdata.commonTime);
-            time_rep = repmat(obj.FEdata.commonTime',total_sats,1);
-            time_rep = time_rep(:);
+            utc_time_rep = repmat(obj.PNT2data.utcTime,total_sats,1);
+            utc_time_rep = utc_time_rep(:);
+            
+            rx_time_rep = repmat(obj.PNT2data.rxTime,total_sats,1);
+            rx_time_rep = rx_time_rep(:);
+
+            common_time_rep = repmat(obj.FEdata.commonTime',total_sats,1);
+            common_time_rep = common_time_rep(:);
             
             %Satellite systems
+            time_steps = length(obj.FEdata.commonTime);
             GPS_rep = repmat('G',size(GPS.allSv,1),1);
             GAL_rep = repmat('E',size(GAL.allSv,1),1);
             GLO_rep = repmat('R',size(GLO.allSv,1),1);
@@ -479,8 +546,8 @@ classdef nlos_datahandler
             sv_rep = repmat(allSv,time_steps,1);
             
             
-            key_names = {'common_time', 'sv_sys', 'sv_id'};
-            key_table = table(time_rep, SYS_rep, sv_rep, ...
+            key_names = {'utc_time', 'rx_time', 'common_time', 'sv_sys', 'sv_id'};
+            key_table = table(utc_time_rep, rx_time_rep, common_time_rep, SYS_rep, sv_rep, ...
                 'VariableNames', key_names);
            
         end

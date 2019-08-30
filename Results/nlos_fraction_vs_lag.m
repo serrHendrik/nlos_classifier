@@ -3,7 +3,7 @@
 
 
 %generate graph on fraction los/nlos of lag sets
-tour = 'ROT_01';
+tour = 'AMS_01';
 GPS_flag = true;
 GAL_flag = true; 
 GLO_flag = false;

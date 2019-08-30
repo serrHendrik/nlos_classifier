@@ -1,6 +1,6 @@
 
 
-function PNT2data = PNT2_extract_input_data(full_filename_output, refPosCommonTime, nav, store)
+function PNT2data = PNT2_extract_input_data(full_filename_output, utcTime, refPosCommonTime, nav, store)
 
     
 
@@ -9,6 +9,9 @@ function PNT2data = PNT2_extract_input_data(full_filename_output, refPosCommonTi
     else
         disp('Extracting data from PNT2 variables...');
         
+        PNT2data.rxTime = store.timeRxTimescale';
+        utcTime_temp = cellstr(datestr(datetime(utcTime),'dd-mm-yyyy HH:MM:SS'));
+        PNT2data.utcTime = utcTime_temp';
         PNT2data.commonTime = refPosCommonTime';
 
         const = ['G', 'E', 'R'];

@@ -8,4 +8,4 @@ Execute this script from the nlos_classifier workspace as root.
 %}
 
 full_filename_output = 'data/ROT_02/PNT2data.mat';
-PNT2_extract_input_data(full_filename_output, refPosCommonTime, nav, store);
+PNT2_extract_input_data(full_filename_output, utcTime, refPosCommonTime, nav, store);

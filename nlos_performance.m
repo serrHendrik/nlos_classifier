@@ -23,7 +23,7 @@ classdef nlos_performance
             val_title_info = ['VALIDATION SET ', tour_val];
 
             nlos_performance.hard_classification_report(Yval_mat,Yval_predict, val_title_info);
-            %nlos_performance.nlos_roc(Yval_mat,Yval_scores, val_title_info);
+            nlos_performance.nlos_roc(Yval_mat,Yval_scores, val_title_info);
 
         end
 

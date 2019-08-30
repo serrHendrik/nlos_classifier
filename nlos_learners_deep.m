@@ -7,15 +7,15 @@ GAL_flag = true;
 GLO_flag = false;
 
 %Select TRAINING tour
-tour_train = 'AMS_01';
+%tour_train = 'AMS_01';
 %tour_train = 'AMS_02';
-%tour_train = 'ROT_01';
+tour_train = 'ROT_01';
 %tour_train = 'ROT_02';
 
 %Select VALIDATION tour
 %tour_val = 'AMS_01';
 %tour_val = 'AMS_02';
-%tour_val = 'ROT_01';
+tour_val = 'ROT_01';
 %tour_val = 'ROT_02';
 
 %Normalize numeric predictors?
@@ -26,34 +26,30 @@ dh_train = nlos_datahandler(tour_train, GPS_flag, GAL_flag, GLO_flag, normalize_
 %dh_val = nlos_datahandler(tour_val, GPS_flag, GAL_flag, GLO_flag, normalize_flag);
 
 %Extract final dataset from datahandler
-%Dtrain = dh_train.data;
+Data = dh_train.data;
 %Dval = dh_val.data;
 
 %Sampling: timewise (keep 1 every X seconds)
-%[Dtrain,~] = dh_train.sample_data_timewise(dh_train.data, 5);
+[Data,~] = dh_train.sample_data_timewise(Data, 3);
 %[Dval,~] = dh_train.sample_data_timewise(dh_val.data, 5);
 %Sampling: balance classes
-%[Dtrain,~] = dh_train.sample_data_balance_classes(Dtrain);
+%[Data,~] = dh_train.sample_data_balance_classes(Data);
 %[Dval,~] = dh_train.sample_data_balance_classes(Dval);
 %Sampling: classwise (maintain balance while downsampling)
-%[Dtrain,~] = dh_train.sample_data_classwise(Dtrain, 0.5);
-%[Dval,~] = dh_train.sample_data_classwise(Dval, 0.5);
+%[Data,~] = dh_train.sample_data_classwise(Data, 0.90);
+%[Dval,~] = dh_train.sample_data_classwise(Dval, 0.998);
 
 
-
-
-ind_half = round(height(dh_train.data)/2);
-Dtrain = dh_train.data(ind_half:end,:);
-
-[data,~] = dh_train.sample_data_balance_classes(Dtrain);
-c = cvpartition(height(data),'KFold', 8);
-Dtrain = data(c.test(1),:);
-Dval = data(c.test(2),:);
+% [Data,~] = dh_train.sample_data_balance_classes(dh_train.data);
+ c = cvpartition(height(Data),'Holdout', 0.2);
+ Dtrain = Data(c.training,:);
+ Dval = Data(c.test,:);
 
 
 %Info
 dh_train.print_info_per_const(Dtrain);
-dh_val.print_info_per_const(Dval);
+dh_train.print_info_per_const(Dval);
+%dh_val.print_info_per_const(Dval);
 
 %%
 %Scaler
@@ -100,6 +96,14 @@ classificationWeights = [weight_NLOS weight_LOS];
 
 layers = [
     imageInputLayer([nb_feat 1 1],"Name","imageinput")
+
+    fullyConnectedLayer(2048)
+    %batchNormalizationLayer
+    reluLayer
+    
+    fullyConnectedLayer(1024)
+    %batchNormalizationLayer
+    reluLayer
     
     fullyConnectedLayer(512)
     %batchNormalizationLayer
@@ -109,7 +113,7 @@ layers = [
     %batchNormalizationLayer
     reluLayer
     
-    fullyConnectedLayer(88)
+    fullyConnectedLayer(48)
     %batchNormalizationLayer
     reluLayer
     
@@ -127,7 +131,7 @@ options = trainingOptions('adam', ...
     'MaxEpochs',10000, ...
     'Shuffle','every-epoch', ...
     'ValidationData',{Xval,Yval}, ...
-    'ValidationFrequency',500, ...
+    'ValidationFrequency',200, ...
     'Verbose',false, ...
     'Plots','training-progress', ...
     'ExecutionEnvironment', 'gpu');
@@ -140,6 +144,10 @@ net = trainNetwork(Xtrain,Ytrain,layers,options);
 
 
 %% Evaluation
+%Reset validation to entire validation set
+%Dval = dh_val.data;
+%Dval_ = scaler.scale(Dval);
+%[Xval, Yval] = nlos_feature_extractor.extract_features_set2_deep_learning(Dval_);
 
 [Ytrain_predicted, Ytrain_scores] = classify(net,Xtrain);
 [Yval_predicted, Yval_scores] = classify(net,Xval);
