@@ -1,4 +1,10 @@
-
+%Function to extract data from PNT2. 
+%First run the PNT2 tool with the apropriate config file. PNT2 will
+%generate a large number of global variables (see workspace). This script
+%then extracts the necessary ones which we require as input for our
+%nlos_classifier project.
+%In the respective data folders (e.g. AMS_01), you will also find a short
+%script which triggers this function.
 
 function PNT2data = PNT2_extract_input_data(full_filename_output, utcTime, refPosCommonTime, nav, store)
 

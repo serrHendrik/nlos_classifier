@@ -1,6 +1,9 @@
 classdef azel_parser
     %AZEL_PARSER Summary of this class goes here
-    %   Detailed explanation goes here
+    %   azel_parser takes the Fisheye output datafile (filename_FEdata) as 
+    %   input and extracts azimuth and elevation information.
+    %   
+    %   Parser currently not used anymore as azimuth and elevation info is extracted from PNT2.
     
     properties
         timestamp_first

@@ -1,3 +1,8 @@
+% A custom designed classification layer allowing us to give more
+% importance to classes which are represented less in the training data.
+% Therefore, a network trained with this layer should have no bias towards
+% any given class.
+
 classdef WeightedClassificationLayer < nnet.layer.ClassificationLayer
         
     properties

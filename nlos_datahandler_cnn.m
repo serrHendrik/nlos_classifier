@@ -1,9 +1,18 @@
 classdef nlos_datahandler_cnn
     %NLOS_DATAHANDLER_CNN Summary of this class goes here
-    %   Detailed explanation goes here
-    
-    %TODO
-    % Select constellation
+    %   This is a separate datahandler to use with Convolution Neural Networks
+    %   (CNNs). The reason a separate datahandler was created, is that CNNs
+    %   in this project are used to extract extra information out of a
+    %   timeseries of every input variable (e.g. the last 5 seconds of the
+    %   pseudorange etc.). This required different data tables, which are
+    %   also present in the data folder (e.g.
+    %   AMS_01_datatable_CNN_LAG4.csv).
+    %   
+    %   A lot of funcitonality was copied from the nlos_datahandler, which
+    %   is obviously not good. It would be better if both datahandlers
+    %   inherit from an abstract parent datahandler which provides shared
+    %   functionality.
+
     
     properties(Access = private)
         dataset_name

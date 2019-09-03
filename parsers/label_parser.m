@@ -1,6 +1,9 @@
 classdef label_parser
     %LABEL_PARSER Summary of this class goes here
-    %   Detailed explanation goes here
+    %   Given the filename from the Fisheye output file, this parser
+    %   extracts the labels. 
+    %
+    %   Parser currently not used anymore (See nlos_datahandler instead).
     
     properties
         full_filename_FEdata

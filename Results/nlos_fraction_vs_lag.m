@@ -1,5 +1,6 @@
-%This script is just for quickly running standard tasks and testing
-%Look into the nlos_learners_X as a base to start using the code.
+%Script to plot the effect of increased lag on label distribution
+%Lag means that inputs to a learner now also provides historical data
+%(e.g. pseudorange of last 5 seconds). This is useful in combination with CNNs.
 
 
 %generate graph on fraction los/nlos of lag sets

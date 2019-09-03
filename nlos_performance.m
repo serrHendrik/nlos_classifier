@@ -1,6 +1,9 @@
 classdef nlos_performance
     %NLOS_PERFORMANCE Summary of this class goes here
-    %   Detailed explanation goes here
+    %   After training a learner, this static class can be used for
+    %   performance evaluation.
+    %
+    %   See nlos_learners_X scripts for examples of how to use this class.
     
     properties
        

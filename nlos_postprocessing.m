@@ -1,6 +1,8 @@
 classdef nlos_postprocessing
-    %UNTITLED Summary of this class goes here
-    %   Detailed explanation goes here
+    %Postprocessing currently involves storing the unscaled datatable
+    %together with a learners soft and hard classification output.
+    %
+    % An example can be found in nls_learners_trees.m
     
     properties 
     end
@@ -21,9 +23,12 @@ classdef nlos_postprocessing
             data_pp.los_ml_soft = los_soft;
             
             %store new table
-            writetable(data_pp,full_filename_output);
-            disp('Postprocessing done.');
-           
+            if ~isfile(full_filename_output)
+                writetable(data_pp,full_filename_output);
+                disp('Output table stored. Postprocessing done.');
+            else
+                disp('File already exists. Remove it first if you want to produce a new one.')
+            end
             
         end
     end

@@ -1,6 +1,11 @@
 classdef nlos_feature_extractor
-    %PREPROCESSING Summary of this class goes here
-    %   Detailed explanation goes here
+    % Using the datatable provided by the nlos_datahandler, the feature
+    % extractor will extract the predictor variables and the response
+    % variable. 
+    % There are also methods present to extract and prepare featuers for 
+    % deep learning, which requires a slightly different format.
+    %
+    % To select standard features, see the get_basic_features() method!
     
     properties
     end

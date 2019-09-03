@@ -1,6 +1,38 @@
 classdef nlos_datahandler
     %NLOS_DATAHANDLER Summary of this class goes here
-    %   Detailed explanation goes here
+    %   The datahandler parses all raw data required for
+    %   nlos_classification into a nice table (data property). Tables are
+    %   great to work with as they allow easy querying of required data, making
+    %   it much easier to do a statistical analysis and to prepare data for
+    %   training etc.
+    %
+    %   Currently, you should init a nlos_datahandler object with a tour
+    %   name and the desired constellations
+    
+    %   The datahandler has predefined tours, which is easy to specify the
+    %   location of the required files. The datahandler also does some
+    %   filtering of possible anomalies and removes data records which
+    %   contains NaN values (see report for full analysis of dealing with
+    %   dirty data).
+    %
+    %   In the init functions (e.g. init_ROT_01()), it is also possible to
+    %   provide a list of time intervals in utc time (which can be easily
+    %   read from the camera footage). If such a list is provided, then
+    %   the datahandler will filter the dataset accordingly. It's important
+    %   to also set the timestamp_first_utc field with the start time of 
+    %   the trip, which is used as a reference point. 
+    %   
+    %   The full datatable for a tour (before any filtering) is only 
+    %   constructed once and then stored in the apropriate data folder.
+    %   If any code changes are done in the table construction phase, 
+    %   remember to remove the .csv file in order to render a new one.
+    %
+    %   INPUTS to nlos_datahandler constructor:
+    %   tour_name: 'AMS_01', 'AMS_02', 'ROT_01', or 'ROT_02'
+    %   GPS_flag: true or false
+    %   GAL_flag: true or false
+    %   GLO_flag: true or false
+    
     
     properties(Access = private)
         dataset_name
@@ -34,7 +66,7 @@ classdef nlos_datahandler
     end
     
     methods
-        function obj = nlos_datahandler(tour_name, GPS_flag, GAL_flag, GLO_flag,normalize_flag)
+        function obj = nlos_datahandler(tour_name, GPS_flag, GAL_flag, GLO_flag)
             obj.GPS_flag = GPS_flag;
             obj.GAL_flag = GAL_flag;
             obj.GLO_flag = GLO_flag;
@@ -65,10 +97,10 @@ classdef nlos_datahandler
             obj = obj.filter_innovations(100);
             
             %Normalize data per constellation if requested
-            if normalize_flag
-                vars_to_norm = {'pseudorange', 'carrierphase', 'cnr', 'doppler', 'az', 'az_cm', 'el', 'el_cm', 'third_ord_diff', 'innovations'};
-                obj = obj.normalize_data_per_const(vars_to_norm); 
-            end
+%             if normalize_flag
+%                 vars_to_norm = {'pseudorange', 'carrierphase', 'cnr', 'doppler', 'az', 'az_cm', 'el', 'el_cm', 'third_ord_diff', 'innovations'};
+%                 obj = obj.normalize_data_per_const(vars_to_norm); 
+%             end
             
         end
         
@@ -285,34 +317,34 @@ classdef nlos_datahandler
             
         end
         
-        function obj = normalize_data_per_const(obj, vars_to_norm)
-            datatable_norm = obj.data;
-            
-            for c = 'GER'
-                %get indices
-                c_ind = find(cell2mat(obj.data.sv_sys) == c);
-                
-                %norm and insert back
-                datatable_norm{c_ind,vars_to_norm} = normalize(obj.data{c_ind,vars_to_norm});
-            
-                if ismember('carrierphase',vars_to_norm)
-                   %Get indices
-                   nonzero_ind = intersect(find(obj.data.carrierphase),c_ind, 'stable');
-
-                   %normalise nonzero data
-                   nonzero_el = obj.data.carrierphase(nonzero_ind);
-                   cp_norm = normalize(nonzero_el);
-
-                   %create new carrierphase column for constellation c
-                   datatable_norm.carrierphase(c_ind) = obj.data.carrierphase(c_ind);
-                   datatable_norm.carrierphase(nonzero_ind) = cp_norm;
-
-                end  
-            end
-            
-            obj.data = datatable_norm;
-
-        end
+%         function obj = normalize_data_per_const(obj, vars_to_norm)
+%             datatable_norm = obj.data;
+%             
+%             for c = 'GER'
+%                 %get indices
+%                 c_ind = find(cell2mat(obj.data.sv_sys) == c);
+%                 
+%                 %norm and insert back
+%                 datatable_norm{c_ind,vars_to_norm} = normalize(obj.data{c_ind,vars_to_norm});
+%             
+%                 if ismember('carrierphase',vars_to_norm)
+%                    %Get indices
+%                    nonzero_ind = intersect(find(obj.data.carrierphase),c_ind, 'stable');
+% 
+%                    %normalise nonzero data
+%                    nonzero_el = obj.data.carrierphase(nonzero_ind);
+%                    cp_norm = normalize(nonzero_el);
+% 
+%                    %create new carrierphase column for constellation c
+%                    datatable_norm.carrierphase(c_ind) = obj.data.carrierphase(c_ind);
+%                    datatable_norm.carrierphase(nonzero_ind) = cp_norm;
+% 
+%                 end  
+%             end
+%             
+%             obj.data = datatable_norm;
+% 
+%         end
         
         function print_info_per_const(obj, datatable)
             mask_GPS = cell2mat(datatable.sv_sys) == 'G';
@@ -378,14 +410,14 @@ classdef nlos_datahandler
             obj = obj.sync_FE_PNT2();
             
             %Construct data table if it doesn't exist yet
-            if isfile(obj.full_filename_output)
-                disp('Output file already exists.')
-                obj = obj.load_data_table();
-            else
+            if ~isfile(obj.full_filename_output)
                 disp('Constructing data table...')
                 obj = obj.construct_table();
                 obj.save_data_table();
             end
+            
+            %Always load table for datatype consistency.
+            obj = obj.load_data_table();
             
             %Info on dataset
             fprintf('\n*** Dataset Initialisation Info ***\n');

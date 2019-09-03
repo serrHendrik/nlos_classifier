@@ -18,38 +18,25 @@ tour_train = 'ROT_01';
 tour_val = 'ROT_01';
 %tour_val = 'ROT_02';
 
-%Normalize numeric predictors?
-normalize_flag = false;
-
 %Create TRAINING and VALIDATION datahandler
-dh_train = nlos_datahandler(tour_train, GPS_flag, GAL_flag, GLO_flag, normalize_flag);
-dh_val = nlos_datahandler(tour_val, GPS_flag, GAL_flag, GLO_flag, normalize_flag);
-
-%Extract final dataset from datahandler
-%Dtrain = dh_train.data;
-%Dval = dh_val.data;
-
-%Sampling: balance classes
-%[Dtrain,~] = dh_train.sample_data_balance_classes(dh_train.data);
-%[Dval,~] = dh_train.sample_data_balance_classes(dh_val.data);
+dh_train = nlos_datahandler(tour_train, GPS_flag, GAL_flag, GLO_flag);
 
 Data = dh_train.data;
-%[Data,~] = dh_train.sample_data_timewise(Data, 3);
-%[Data,~] = dh_train.sample_data_classwise(Data, 0.95);
-c = cvpartition(height(Data),'Holdout', 0.2);
+
+c = cvpartition(height(Data),'Holdout', 0.15);
 Dtrain = Data(c.training,:);
 Dval = Data(c.test,:);
 
 %Info
 dh_train.print_info_per_const(Dtrain);
-dh_val.print_info_per_const(Dval);
+dh_train.print_info_per_const(Dval);
 
 %%
 %Scaler
 scale_flag = true;
 
 if scale_flag
-    scalable_vars = Dtrain.Properties.VariableNames(4:13);
+    scalable_vars = {'pseudorange', 'carrierphase', 'cnr', 'doppler', 'az', 'az_cm', 'el', 'el_cm', 'third_ord_diff', 'innovations'};
     scaler = nlos_scaler_minmax(Dtrain,scalable_vars);
     
     Dtrain_ = scaler.scale(Dtrain);
@@ -135,8 +122,8 @@ nlos_performance.validate_learner(learner2, tour_train, tour_val, Xtrain, Ytrain
 
 %%
 %Test on other data
-tour_test = 'AMS_02';
-dh2 = nlos_datahandler(tour_test, GPS_flag, GAL_flag, GLO_flag, normalize_flag);
+tour_test = 'ROT_02';
+dh2 = nlos_datahandler(tour_test, GPS_flag, GAL_flag, GLO_flag);
 Data2 = dh2.data;
 if scale_flag
     Data2_ = scaler.scale(Data2);

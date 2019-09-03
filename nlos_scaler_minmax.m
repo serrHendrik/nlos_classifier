@@ -1,6 +1,17 @@
 classdef nlos_scaler_minmax
     %NLOS_SCALER_MINMAX Summary of this class goes here
-    %   Detailed explanation goes here    
+    %   A minmax scaler will scale all variables in scalable_vars to the
+    %   range of [0, 1]. It will do so separately for every constellation.
+    % 
+    %   An important special case is the carrierphase, which contains a lot
+    %   of 0 values before scaling, indicating that carrierphase
+    %   information is missing. The scaler will only scale the nonzero
+    %   carrierphase data and will change the original zeros to -1, to
+    %   clearly distinguish the scaled minima from the missing data.
+    %
+    %   Remember to init the scaler with the training set, and then use it
+    %   to scale both the training and validation/test sets, using the
+    %   scale() method.
 
     
     properties

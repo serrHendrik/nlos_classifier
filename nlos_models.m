@@ -1,6 +1,8 @@
 classdef nlos_models
     %NLOS_MODELS Summary of this class goes here
-    %   Detailed explanation goes here
+    %   Basic Machine Learning models.
+    %   See the nlos_learners_X scripts for examples of how to easily
+    %   access and use models defined in this static class.
     
     properties
         

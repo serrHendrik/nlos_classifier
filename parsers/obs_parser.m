@@ -1,6 +1,8 @@
 classdef obs_parser
     %READ_RNX_DATAHANDLER Summary of this class goes here
-    %   Detailed explanation goes here
+    %   Parser to extract data from rinex file
+    %
+    %   Parser currently not used anymore (See nlos_datahandler instead).
    
 %     properties (Access = private)
 %        obs_parser_function = @load_RINEX_obs 
