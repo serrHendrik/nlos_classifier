@@ -5,7 +5,7 @@
 The project consists out of several modules which are mostly represented by a single class. The general workflow which uses these modules is visualised in the following illustration.
 
 
-![Workflow](NLOS_Classifier_Workflow.PNG)
+![Workflow](images/NLOS_Classifier_Workflow.PNG)
 
 ### Datahandler
 Class files: <em>nlos_datahandler.m</em> and <em>nlos_datahandler_cnn.m</em>
