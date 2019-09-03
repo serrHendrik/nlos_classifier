@@ -14,8 +14,8 @@ tour_train = 'AMS_01';
 
 %Select VALIDATION tour
 %tour_val = 'AMS_01';
-tour_val = 'AMS_02';
-%tour_val = 'ROT_01';
+%tour_val = 'AMS_02';
+tour_val = 'ROT_01';
 %tour_val = 'ROT_02';
 
 %LAG

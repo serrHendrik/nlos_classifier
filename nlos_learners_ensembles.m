@@ -2,7 +2,7 @@
 %Datahandler
 
 %Select constellations
-GPS_flag = true;
+GPS_flag = false;
 GAL_flag = true; 
 GLO_flag = false;
 
@@ -18,12 +18,9 @@ tour_train = 'ROT_01';
 tour_val = 'ROT_01';
 %tour_val = 'ROT_02';
 
-%Normalize numeric predictors?
-normalize_flag = false;
-
 %Create TRAINING and VALIDATION datahandler
-dh_train = nlos_datahandler(tour_train, GPS_flag, GAL_flag, GLO_flag, normalize_flag);
-dh_val = nlos_datahandler(tour_val, GPS_flag, GAL_flag, GLO_flag, normalize_flag);
+dh_train = nlos_datahandler(tour_train, GPS_flag, GAL_flag, GLO_flag);
+dh_val = nlos_datahandler(tour_val, GPS_flag, GAL_flag, GLO_flag);
 
 %Sampling
 %Not required for basic learners
@@ -102,7 +99,7 @@ ylabel('Validation classification error')
 %% New data
 
 tour_test = 'AMS_02';
-dh2 = nlos_datahandler(tour_test, GPS_flag, GAL_flag, GLO_flag, normalize_flag);
+dh2 = nlos_datahandler(tour_test, GPS_flag, GAL_flag, GLO_flag);
 Data2 = dh2.data;
 Data2_ = scaler.scale(Data2);
 [X2, Y2] = nlos_feature_extractor.extract_standard_features(Data2_);

@@ -18,12 +18,10 @@ tour_val = 'AMS_01';
 %tour_val = 'ROT_01';
 %tour_val = 'ROT_02';
 
-%Normalize numeric predictors?
-normalize_flag = true;
 
 %Create TRAINING and VALIDATION datahandler
-dh_train = nlos_datahandler(tour_train, GPS_flag, GAL_flag, GLO_flag, normalize_flag);
-dh_val = nlos_datahandler(tour_val, GPS_flag, GAL_flag, GLO_flag, normalize_flag);
+dh_train = nlos_datahandler(tour_train, GPS_flag, GAL_flag, GLO_flag);
+dh_val = nlos_datahandler(tour_val, GPS_flag, GAL_flag, GLO_flag);
 
 %Sampling
 %Not required for basic learners
@@ -56,7 +54,6 @@ dh_val.print_info_per_const(Dval);
 
 %For basic_holdout learners, set cv = false (CV = Cross Validation)
 cv_flag = false;
-
 
 %Model: Decision Tree
 learner = nlos_models.classification_tree(Xtrain, Ytrain, cv_flag);

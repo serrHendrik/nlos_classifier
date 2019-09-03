@@ -12,11 +12,8 @@ GLO_flag = false;
 tour = 'ROT_01';
 %tour = 'ROT_02';
 
-%Normalize numeric predictors?
-normalize_flag = true;
-
 %Create datahandler
-dh = nlos_datahandler(tour, GPS_flag, GAL_flag, GLO_flag, normalize_flag);
+dh = nlos_datahandler(tour, GPS_flag, GAL_flag, GLO_flag);
 
 %Sampling
 %Not required for basic learners
@@ -42,11 +39,15 @@ dh.print_info_per_const(dataset);
 %%
 %Train Learner
 
+%WARNING: Holdout learners have not been provided in the nlos_models.m
+%class. Only the decision tree has a hold out variant (easily implementable
+%though)
+
 %For basic_cv learners, set cv = true (CV = Cross Validation)
 cv_flag = true;
 
 %Model: Decision Tree
-%learner = nlos_models.classification_tree(predictors, response, cv_flag);
+learner = nlos_models.classification_tree(predictors, response, cv_flag);
 
 %Model: Linear Discriminant Analysis
 %learner = nlos_models.discriminant_linear(predictors, response);
@@ -61,7 +62,7 @@ cv_flag = true;
 %learner = nlos_models.knn_euclidean_SIweight(predictors, response);
 
 %Model: K-Nearest Neighbours (Minkowski distance)
-learner = nlos_models.knn_minkowski(predictors, response);
+%learner = nlos_models.knn_minkowski(predictors, response);
 
 %Model: Ensemble of Trees (bagging)
 %learner = nlos_models.ensemble_bagging(predictors, response);
@@ -74,8 +75,8 @@ learner = nlos_models.knn_minkowski(predictors, response);
 
 %Report
 response_mat = table2array(response);
-nlos_performance.hard_classification_report(response_mat,validationPredictions);
-nlos_performance.nlos_roc(response_mat,validationScores);
+nlos_performance.hard_classification_report(response_mat,validationPredictions, tour);
+nlos_performance.nlos_roc(response_mat,validationScores, tour);
 
 
 
